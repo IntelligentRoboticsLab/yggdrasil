@@ -11,7 +11,6 @@ type ModelOutput = Vec<f32>;
 use crate::{
     behavior::{
         BehaviorConfig,
-        behaviors::look_around,
         engine::{
             Behavior, BehaviorState, RlBehaviorInput, RlBehaviorOutput, in_behavior,
             spawn_rl_behavior,
@@ -23,7 +22,7 @@ use crate::{
     },
     localization::RobotPose,
     motion::walking_engine::{FootSwitchedEvent, Gait, step::Step, step_context::StepContext},
-    nao::{Cycle, NaoManager},
+    nao::{Cycle, HeadMotionManager, NaoManager},
 };
 
 pub struct RlStrikerSearchBehaviorPlugin;
@@ -177,16 +176,10 @@ fn handle_inference_output(
     behavior_config: Res<BehaviorConfig>,
     mut nao_manager: ResMut<NaoManager>,
     observe_starting_time: Res<ObserveStartingTime>,
+    head_motion_manager: ResMut<HeadMotionManager>,
 ) {
     step_context
         .request_walk(output.step * behavior_config.rl_striker_search.policy_output_scaling);
 
-    let observe_config = &behavior_config.rl_striker_search;
-    look_around(
-        &mut nao_manager,
-        **observe_starting_time,
-        observe_config.head_rotation_speed,
-        observe_config.head_yaw_max,
-        observe_config.head_pitch_max,
-    );
+    head_motion_manager.look_around(&mut nao_manager, **observe_starting_time);
 }

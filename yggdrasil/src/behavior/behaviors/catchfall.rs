@@ -1,13 +1,13 @@
 use crate::{
     behavior::engine::in_behavior,
+    nao::HeadMotionManager,
     sensor::falling::{FallDirection, FallState},
 };
 use bevy::prelude::*;
 use nidhogg::{
     NaoState,
     types::{
-        ArmJoints, FillExt, HeadJoints, LeftArmJoints, LeftLegJoints, LegJoints, RightArmJoints,
-        RightLegJoints,
+        ArmJoints, FillExt, LeftArmJoints, LeftLegJoints, LegJoints, RightArmJoints, RightLegJoints,
     },
 };
 
@@ -157,8 +157,8 @@ const ARM_JOINTS_BACKWARD_FALL: ArmJoints<f32> = ArmJoints {
 
 fn catch_fall(
     mut nao_manager: ResMut<NaoManager>,
+    head_motion_manager: Res<HeadMotionManager>,
     nao_state: ResMut<NaoState>,
-
     fall_state: Res<FallState>,
 ) {
     if let FallState::Falling(fall_direction) = fall_state.as_ref() {
@@ -177,14 +177,8 @@ fn catch_fall(
 
                 nao_manager.set_legs(target_leg_joints, LegJoints::fill(0.1), Priority::Critical);
 
-                nao_manager.set_head(
-                    HeadJoints {
-                        yaw: 0.0,
-                        pitch: -0.6,
-                    },
-                    HeadJoints::fill(0.3),
-                    Priority::Critical,
-                );
+                head_motion_manager.fixed(&mut nao_manager, 0.0, -0.6, 0.3, Priority::Critical);
+
                 nao_manager.set_arms(target_arm_joints, ArmJoints::fill(0.1), Priority::Critical);
             }
             FallDirection::Left | FallDirection::Right => {
@@ -195,11 +189,8 @@ fn catch_fall(
 
                 nao_manager.set_legs(target_leg_joints, LegJoints::fill(0.1), Priority::Critical);
                 nao_manager.set_arms(target_arm_joints, ArmJoints::fill(0.1), Priority::Critical);
-                nao_manager.set_head(
-                    HeadJoints::default(),
-                    HeadJoints::fill(0.3),
-                    Priority::Critical,
-                );
+
+                head_motion_manager.fixed(&mut nao_manager, 0.0, 0.0, 0.3, Priority::Critical);
             }
             FallDirection::Backwards => {
                 let target_leg_joints = lerp_legs(
@@ -213,14 +204,8 @@ fn catch_fall(
                     0.6,
                 );
 
-                nao_manager.set_head(
-                    HeadJoints {
-                        yaw: 0.0,
-                        pitch: 0.6,
-                    },
-                    HeadJoints::fill(0.3),
-                    Priority::Critical,
-                );
+                head_motion_manager.fixed(&mut nao_manager, 0.0, 0.6, 0.3, Priority::Critical);
+
                 nao_manager.set_legs(target_leg_joints, LegJoints::fill(0.1), Priority::Critical);
                 nao_manager.set_arms(target_arm_joints, ArmJoints::fill(0.1), Priority::Critical);
             }

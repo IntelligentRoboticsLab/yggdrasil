@@ -3,18 +3,14 @@ use std::time::Instant;
 use bevy::prelude::*;
 
 use crate::{
-    behavior::{
-        BehaviorConfig,
-        behaviors::look_around,
-        engine::{Behavior, BehaviorState, in_behavior},
-    },
+    behavior::engine::{Behavior, BehaviorState, in_behavior},
     core::config::{layout::LayoutConfig, showtime::PlayerConfig},
     localization::RobotPose,
     motion::{
         step_planner::{StepPlanner, Target},
         walking_engine::step_context::StepContext,
     },
-    nao::NaoManager,
+    nao::{HeadMotionManager, NaoManager},
 };
 
 #[derive(Resource, Deref)]
@@ -53,7 +49,7 @@ fn walk_to_set(
     mut step_context: ResMut<StepContext>,
     mut nao_manager: ResMut<NaoManager>,
     observe_starting_time: Res<ObserveStartingTime>,
-    config: Res<BehaviorConfig>,
+    head_motion_manager: ResMut<HeadMotionManager>,
 ) {
     let set_robot_position = layout_config
         .set_positions
@@ -77,13 +73,5 @@ fn walk_to_set(
         step_context.request_stand();
     }
 
-    let observe_config = &config.observe;
-
-    look_around(
-        &mut nao_manager,
-        **observe_starting_time,
-        observe_config.head_rotation_speed,
-        observe_config.head_yaw_max,
-        observe_config.head_pitch_max,
-    );
+    head_motion_manager.look_around(&mut nao_manager, **observe_starting_time);
 }

@@ -429,12 +429,12 @@ impl NaoManager {
     ) -> &mut Self {
         let joint_positions = HeadJoints {
             yaw,
-            ..self.head_settings.joints_position.clone()
+            ..self.head_settings.joints_position
         };
 
         let join_stiffness = HeadJoints {
             yaw: stiffness,
-            ..self.head_settings.joints_stiffness.clone()
+            ..self.head_settings.joints_stiffness
         };
 
         Self::set_joint_settings(
@@ -542,7 +542,7 @@ impl NaoManager {
     /// Disable all motors in the head.
     pub fn unstiff_head(&mut self, priority: Priority) -> &mut Self {
         self.set_head(
-            self.head_settings.joints_position.clone(),
+            self.head_settings.joints_position,
             HeadJoints::fill(STIFFNESS_UNSTIFF),
             priority,
         )
@@ -640,7 +640,7 @@ impl NaoManager {
         JointArray::builder()
             .leg_joints(self.leg_settings.joints_position.clone())
             .arm_joints(self.arm_settings.joints_position.clone())
-            .head_joints(self.head_settings.joints_position.clone())
+            .head_joints(self.head_settings.joints_position)
             .build()
     }
 
@@ -648,7 +648,7 @@ impl NaoManager {
         JointArray::builder()
             .leg_joints(self.leg_settings.joints_stiffness.clone())
             .arm_joints(self.arm_settings.joints_stiffness.clone())
-            .head_joints(self.head_settings.joints_stiffness.clone())
+            .head_joints(self.head_settings.joints_stiffness)
             .build()
     }
 }

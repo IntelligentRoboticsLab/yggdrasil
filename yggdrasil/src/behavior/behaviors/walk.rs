@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use nidhogg::types::{FillExt, HeadJoints};
 
 use crate::{
     behavior::engine::{Behavior, BehaviorState, in_behavior},
@@ -8,7 +7,7 @@ use crate::{
         step_planner::StepPlanner,
         walking_engine::{step::Step, step_context::StepContext},
     },
-    nao::{NaoManager, Priority},
+    nao::{HeadMotionManager, NaoManager, Priority},
 };
 
 use nalgebra::Point3;
@@ -37,11 +36,11 @@ fn walk(
     mut step_planner: ResMut<StepPlanner>,
     mut step_context: ResMut<StepContext>,
     mut nao_manager: ResMut<NaoManager>,
+    head_motion_manager: ResMut<HeadMotionManager>,
     pose: Res<RobotPose>,
 ) {
     if let Some(point) = walk.look_target {
-        let look_at = pose.get_look_at_absolute(&point);
-        nao_manager.set_head(look_at, HeadJoints::fill(0.5), Priority::High);
+        head_motion_manager.look_at(&mut nao_manager, &point, &pose, Priority::High);
     }
 
     step_planner.clear_target();

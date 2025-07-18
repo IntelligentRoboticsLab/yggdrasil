@@ -4,6 +4,7 @@ mod battery_led;
 mod center_of_mass;
 mod center_of_pressure;
 mod cycle;
+mod head_motion_manager;
 mod lola;
 mod manager;
 mod robot_info;
@@ -11,6 +12,7 @@ mod robot_info;
 pub use center_of_mass::*;
 pub use center_of_pressure::*;
 pub use cycle::*;
+pub(crate) use head_motion_manager::*;
 pub use manager::*;
 pub use robot_info::*;
 
@@ -23,6 +25,7 @@ impl PluginGroup for NaoPlugins {
             .add(lola::LolaPlugin)
             .add(cycle::CycleTimePlugin)
             .add(battery_led::BatteryLedPlugin)
+            .add(head_motion_manager::HeadMotionManagerPlugin)
             .add(manager::NaoManagerPlugin)
             .add(center_of_mass::CenterOfMassPlugin)
             .add(center_of_pressure::CenterOfPressurePlugin)

@@ -4,20 +4,14 @@ use serde_with::serde_as;
 use std::time::Instant;
 
 use crate::{
-    behavior::{
-        BehaviorConfig,
-        engine::{Behavior, BehaviorState, in_behavior},
-    },
+    behavior::engine::{Behavior, BehaviorState, in_behavior},
     motion::walking_engine::{StandingHeight, step::Step, step_context::StepContext},
-    nao::{NaoManager, Priority},
+    nao::{HeadMotionManager, NaoManager},
 };
-use nidhogg::types::{FillExt, HeadJoints};
-
-const ROTATION_STIFFNESS: f32 = 0.3;
 
 /// Config struct containing parameters for the initial behavior.
 #[serde_as]
-#[derive(Resource, Serialize, Deserialize, Debug, Clone)]
+#[derive(Resource, Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(deny_unknown_fields)]
 pub struct ObserveBehaviorConfig {
     // Controls how fast the robot moves its head back and forth while looking around
@@ -28,6 +22,10 @@ pub struct ObserveBehaviorConfig {
     pub head_pitch_max: f32,
     // Controls how far to the bottom the robot looks while looking around, in radians
     pub head_yaw_max: f32,
+    // The look at head stiffness
+    pub look_at_head_stiffness: f32,
+    // The look around head stiffness
+    pub look_around_head_stiffness: f32,
 }
 
 #[derive(Resource, Deref)]
@@ -72,45 +70,16 @@ fn reset_observe_starting_time(mut observe_starting_time: ResMut<ObserveStarting
 
 fn observe(
     mut nao_manager: ResMut<NaoManager>,
-    behavior_config: Res<BehaviorConfig>,
     observe: Res<Observe>,
     observe_starting_time: Res<ObserveStartingTime>,
     mut step_context: ResMut<StepContext>,
+    head_motion_manager: Res<HeadMotionManager>,
 ) {
-    let observe_config = &behavior_config.observe;
-    look_around(
-        &mut nao_manager,
-        **observe_starting_time,
-        observe_config.head_rotation_speed,
-        observe_config.head_yaw_max,
-        observe_config.head_pitch_max,
-    );
+    head_motion_manager.look_around(&mut nao_manager, **observe_starting_time);
 
     if let Some(step) = observe.step {
         step_context.request_walk(step);
     } else {
         step_context.request_stand_with_height(StandingHeight::MAX);
     }
-}
-
-pub fn look_around(
-    nao_manager: &mut NaoManager,
-    starting_time: Instant,
-    rotation_speed: f32,
-    yaw_multiplier: f32,
-    pitch_multiplier: f32,
-) {
-    // Used to parameterize the yaw and pitch angles, multiplying with a large
-    // rotation speed will make the rotation go faster.
-    let movement_progress = starting_time.elapsed().as_secs_f32() * rotation_speed;
-    let yaw = (movement_progress).sin() * yaw_multiplier;
-    let pitch = (movement_progress * 2.0 + std::f32::consts::FRAC_PI_2)
-        .sin()
-        .max(0.0)
-        * pitch_multiplier;
-
-    let position = HeadJoints { yaw, pitch };
-    let stiffness = HeadJoints::fill(ROTATION_STIFFNESS);
-
-    nao_manager.set_head(position, stiffness, Priority::default());
 }
