@@ -1,4 +1,5 @@
 mod catchfall;
+mod lost_ball_search;
 mod observe;
 mod rl_striker_search;
 mod sitting;
@@ -13,6 +14,7 @@ mod walk_to_ball;
 mod walk_to_set;
 
 pub use catchfall::*;
+pub use lost_ball_search::*;
 pub use observe::*;
 pub use rl_striker_search::*;
 pub use sitting::*;
