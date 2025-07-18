@@ -25,7 +25,7 @@ impl PluginGroup for VisionPlugins {
             .add(scan_grid::ScanGridPlugin)
             .add(scan_lines::ScanLinesPlugin)
             .add(line_detection::LineDetectionPlugin::<Top>::default())
-            .add(line_detection::LineDetectionPlugin::<Bottom>::default())
+            // .add(line_detection::LineDetectionPlugin::<Bottom>::default())
             .add(field_boundary::FieldBoundaryPlugin)
             .add(ball_detection::BallDetectionPlugin)
             // .add(robot_detection::RobotDetectionPlugin)
