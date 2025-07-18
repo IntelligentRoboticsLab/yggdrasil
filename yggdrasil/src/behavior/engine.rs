@@ -8,6 +8,7 @@ use ml::{
 use nalgebra::Point2;
 
 use crate::{
+    behavior::roles::LostBallSearchTimer,
     core::config::showtime::PlayerConfig,
     motion::walking_engine::Gait,
     nao::{NaoManager, Priority, RobotInfo},
@@ -17,17 +18,19 @@ use crate::{
 
 use super::{
     behaviors::{
-        CatchFall, CatchFallBehaviorPlugin, ObserveBehaviorPlugin, RlStrikerSearchBehaviorPlugin,
-        Sitting, SittingBehaviorPlugin, Stand, StandBehaviorPlugin, StandLookAt,
-        StandLookAtBehaviorPlugin, Standup, StandupBehaviorPlugin, StartUpBehaviorPlugin,
-        VisualReferee, VisualRefereeBehaviorPlugin, WalkBehaviorPlugin, WalkToBallBehaviorPlugin,
-        WalkToBehaviorPlugin, WalkToSet, WalkToSetBehaviorPlugin,
+        CatchFall, CatchFallBehaviorPlugin, LostBallSearchBehaviorPlugin, ObserveBehaviorPlugin,
+        RlStrikerSearchBehaviorPlugin, Sitting, SittingBehaviorPlugin, Stand, StandBehaviorPlugin,
+        StandLookAt, StandLookAtBehaviorPlugin, Standup, StandupBehaviorPlugin,
+        StartUpBehaviorPlugin, VisualReferee, VisualRefereeBehaviorPlugin, WalkBehaviorPlugin,
+        WalkToBallBehaviorPlugin, WalkToBehaviorPlugin, WalkToSet, WalkToSetBehaviorPlugin,
     },
     primary_state::PrimaryState,
     roles::{
         Defender, DefenderRolePlugin, Goalkeeper, GoalkeeperRolePlugin, Striker, StrikerRolePlugin,
     },
 };
+
+use std::time::Duration;
 
 const FORWARD_LEANING_THRESHOLD: f32 = 0.2;
 const BACKWARD_LEANING_THRESHOLD: f32 = -0.2;
@@ -57,6 +60,7 @@ impl Plugin for BehaviorEnginePlugin {
                 WalkToBallBehaviorPlugin,
                 WalkToBehaviorPlugin,
                 WalkToSetBehaviorPlugin,
+                LostBallSearchBehaviorPlugin,
             ))
             .add_systems(PostUpdate, role_base);
     }
@@ -67,6 +71,20 @@ fn broken_robot_behavior_override(robot_info: Res<RobotInfo>, mut nao_manager: R
     // Override the behavior so it does not use its head joints, when they are broken
     if robot_info.robot_id == BROKEN_ROBOT_ID {
         nao_manager.set_head_yaw(0.0, 0.0, Priority::Critical);
+    }
+}
+
+#[derive(Resource)]
+pub struct DefenderSwitchTimer {
+    timer: Timer,
+}
+
+impl DefenderSwitchTimer {
+    #[must_use]
+    pub fn new(duration: Duration) -> Self {
+        DefenderSwitchTimer {
+            timer: Timer::new(duration, TimerMode::Once),
+        }
     }
 }
 
@@ -111,6 +129,7 @@ pub enum BehaviorState {
     WalkToSet,
     WalkToBall,
     RlStrikerSearchBehavior,
+    LostBallSearch,
 }
 
 #[must_use]
@@ -173,6 +192,9 @@ impl RoleState {
         commands: &mut Commands,
         player_number: u8,
         possible_ball_distance: Option<f32>,
+        role_state: Res<State<RoleState>>,
+        defender_switch_timer: Option<ResMut<DefenderSwitchTimer>>,
+        time: Res<Time>,
     ) {
         if let Some(distance) = possible_ball_distance {
             if distance < 3.0 {
@@ -180,6 +202,28 @@ impl RoleState {
                 return;
             }
         }
+
+        // check if the current role is striker
+        if *role_state == RoleState::Striker && (player_number != 4 && player_number != 5) {
+            if let Some(mut timer) = defender_switch_timer {
+                timer.timer.tick(time.delta());
+                if timer.timer.finished() {
+                    commands.remove_resource::<DefenderSwitchTimer>();
+                    if player_number == 1 {
+                        commands.set_role(Goalkeeper);
+                    } else {
+                        commands.set_role(Defender);
+                    }
+                } else {
+                    commands.set_role(Striker);
+                }
+                return;
+            }
+            commands.insert_resource(DefenderSwitchTimer::new(Duration::from_secs(9)));
+            commands.set_role(Striker);
+            return;
+        }
+
         // TODO: Check if robots have been penalized, or which robot is closed to the ball etc.
         Self::by_player_number(commands, player_number);
     }
@@ -216,6 +260,9 @@ pub fn role_base(
     game_controller_message: Option<Res<GameControllerMessage>>,
     imu_values: Res<IMUValues>,
     ball_tracker: Res<BallTracker>,
+    role_state: Res<State<RoleState>>,
+    defender_switch_timer: Option<ResMut<DefenderSwitchTimer>>,
+    time: Res<Time>,
 ) {
     commands.disable_role();
     let behavior = behavior_state.get();
@@ -278,6 +325,9 @@ pub fn role_base(
     match *primary_state {
         PrimaryState::Sitting => commands.set_behavior(Sitting),
         PrimaryState::Penalized => {
+            // reset all timers
+            commands.remove_resource::<DefenderSwitchTimer>();
+            commands.remove_resource::<LostBallSearchTimer>();
             commands.set_behavior(Stand);
         }
         PrimaryState::Standby => {
@@ -308,6 +358,9 @@ pub fn role_base(
                 &mut commands,
                 player_config.player_number,
                 possible_ball_distance,
+                role_state,
+                defender_switch_timer,
+                time,
             );
         }
     }
