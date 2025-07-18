@@ -6,4 +6,4 @@ mod striker;
 
 pub use defender::{Defender, DefenderRolePlugin};
 pub use goalkeeper::{Goalkeeper, GoalkeeperRolePlugin};
-pub use striker::{Striker, StrikerRolePlugin};
+pub use striker::{Striker, StrikerRolePlugin, LostBallSearchTimer};

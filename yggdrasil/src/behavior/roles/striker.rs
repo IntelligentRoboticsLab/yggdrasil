@@ -5,7 +5,9 @@ use nidhogg::types::{FillExt, RightEye, color};
 
 use crate::{
     behavior::{
-        behaviors::{RlStrikerSearchBehavior, StandLookAt, Walk, WalkTo, WalkToBall},
+        behaviors::{
+            LostBallSearch, RlStrikerSearchBehavior, StandLookAt, Walk, WalkTo, WalkToBall,
+        },
         engine::{BehaviorState, CommandsBehaviorExt, RoleState, Roles, in_role},
         primary_state::PrimaryState,
     },
@@ -18,6 +20,8 @@ use crate::{
     nao::{NaoManager, Priority},
     vision::ball_detection::ball_tracker::BallTracker,
 };
+
+use std::time::Duration;
 
 const WALK_WITH_BALL_ANGLE: f32 = 0.3;
 const ALIGN_WITH_BALL_DISTANCE: f32 = 0.3;
@@ -69,6 +73,22 @@ fn in_set_play(
 #[derive(Resource, Default, Debug)]
 pub struct Striker;
 
+#[derive(Resource)]
+pub struct LostBallSearchTimer {
+    timer: Timer,
+    last_ball: Point2<f32>,
+}
+
+impl LostBallSearchTimer {
+    #[must_use]
+    pub fn new(duration: Duration, last_ball: Point2<f32>) -> Self {
+        LostBallSearchTimer {
+            timer: Timer::new(duration, TimerMode::Once),
+            last_ball,
+        }
+    }
+}
+
 impl Roles for Striker {
     const STATE: RoleState = RoleState::Striker;
 }
@@ -83,18 +103,49 @@ pub fn striker_role(
     layout_config: Res<LayoutConfig>,
     ball_tracker: Res<BallTracker>,
     mut nao_manager: ResMut<NaoManager>,
+    lost_ball_timer: Option<ResMut<LostBallSearchTimer>>,
+    time: Res<Time>,
 ) {
     let Some(relative_ball) = ball_tracker.stationary_ball() else {
-        nao_manager.set_right_eye_led(RightEye::fill(color::f32::GREEN), Priority::default());
+        if let Some(mut timer) = lost_ball_timer {
+            timer.timer.tick(time.delta()); // <- tick the timer
 
-        commands.set_behavior(RlStrikerSearchBehavior);
+            if timer.timer.finished() {
+                commands.remove_resource::<LostBallSearchTimer>();
+            } else {
+                nao_manager
+                    .set_right_eye_led(RightEye::fill(color::f32::BLUE), Priority::default()); // TEMP LED
+
+                // determine the side we need to turn to by using timer.last_ball
+                let relative_last_ball = &timer.last_ball;
+                commands.set_behavior(LostBallSearch::with_turning(
+                    relative_last_ball.y.signum() * 0.6, //TODO test
+                ));
+            }
+        } else {
+            nao_manager.set_right_eye_led(RightEye::fill(color::f32::GREEN), Priority::default());
+            commands.set_behavior(RlStrikerSearchBehavior);
+        }
         return;
     };
+    let absolute_ball: nalgebra::OPoint<f32, nalgebra::Const<2>> =
+        pose.robot_to_world(&relative_ball);
 
-    let absolute_ball = pose.robot_to_world(&relative_ball);
+    if ball_tracker.timestamp.elapsed().as_secs_f32() > 0.5 {
+        if lost_ball_timer.is_none() {
+            commands.insert_resource(LostBallSearchTimer::new(
+                Duration::from_secs(9),
+                relative_ball,
+            ));
+        }
+    } else {
+        commands.remove_resource::<LostBallSearchTimer>();
+    }
+
     let ball_angle = pose.angle_to(&absolute_ball);
     let ball_distance = relative_ball.coords.norm();
-    let ball_target = Point3::new(absolute_ball.x, absolute_ball.y, 0.2);
+    let ball_target: nalgebra::OPoint<f32, nalgebra::Const<3>> =
+        Point3::new(absolute_ball.x, absolute_ball.y, 0.2);
 
     let relative_goalpost_left =
         pose.world_to_robot(&Point2::new(layout_config.field.length / 2., 0.8));
