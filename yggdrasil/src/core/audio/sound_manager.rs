@@ -4,7 +4,8 @@ use crate::prelude::Result;
 use bevy::prelude::*;
 
 use kira::{
-    manager::{AudioManager, AudioManagerSettings, backend::DefaultBackend},
+    AudioManager, AudioManagerSettings,
+    backend::DefaultBackend,
     sound::streaming::{StreamingSoundData, StreamingSoundSettings},
 };
 use miette::{Context, IntoDiagnostic};
@@ -51,7 +52,7 @@ impl Plugin for SoundManagerPlugin {
 /// A threadsafe `SoundManager` to handle loading and playing sounds.
 pub struct SoundManager {
     audio_manager: Arc<Mutex<AudioManager<DefaultBackend>>>,
-    volume: f64,
+    volume: f32,
 }
 
 impl SoundManager {
@@ -72,7 +73,7 @@ impl Default for SoundManager {
     fn default() -> Self {
         let audio_manager = AudioManager::new(AudioManagerSettings::default()).unwrap();
         let volume_string = std::env::var(VOLUME_ENV_VARIABLE_NAME).unwrap_or("0.1".to_string());
-        let volume: f64 = volume_string.parse().unwrap();
+        let volume: f32 = volume_string.parse().unwrap();
 
         SoundManager {
             audio_manager: Arc::new(Mutex::new(audio_manager)),
