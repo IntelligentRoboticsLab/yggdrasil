@@ -164,7 +164,7 @@ impl RoleState {
     pub fn by_player_number(commands: &mut Commands, player_number: u8) {
         match player_number {
             1 => commands.set_role(Goalkeeper),
-            5 | 4 => commands.set_role(Striker),
+            5 | 4 | 3 => commands.set_role(Striker),
             _ => commands.set_role(Defender),
         }
     }
