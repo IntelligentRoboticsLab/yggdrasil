@@ -75,7 +75,6 @@ fn in_set_play(
                 } else {
                     *whistle_time = Some(Instant::now());
                     // Await timer
-                    println!("Setting whistle timer...");
                     return true;
                 }
             }
