@@ -1,11 +1,10 @@
 use bevy::prelude::*;
 use nalgebra::Vector2;
-use tracing::info;
 
 use crate::{
     behavior::engine::{Behavior, BehaviorState, in_behavior},
     motion::keyframe::{KeyframeExecutor, MotionType},
-    nao::{JointSettings, NaoManager, Priority},
+    nao::{NaoManager, Priority},
     prelude::PreWrite,
     sensor::{
         falling::{FallState, LyingDirection},
@@ -112,11 +111,6 @@ fn balance_standup(
     joints_position.left_leg.hip_yaw_pitch += balancing_factor.x * gyro.x;
     joints_position.right_leg.ankle_pitch += balancing_factor.y * gyro.y;
     joints_position.right_leg.ankle_roll += balancing_factor.x * gyro.x;
-
-    info!(
-        "overwriting with balance amount: {:.2}",
-        balancing_factor.x * gyro.x
-    );
 
     nao_manager.set_legs(joints_position, joints_stiffness, Priority::Custom(99));
 }
