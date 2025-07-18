@@ -2,7 +2,6 @@ use std::{f32, time::Instant};
 
 use bevy::prelude::*;
 use ml::{MlModel, MlModelResourceExt, prelude::ModelExecutor};
-use nidhogg::types::{FillExt, HeadJoints};
 use serde::{Deserialize, Serialize};
 use tasks::conditions::task_finished;
 
@@ -12,6 +11,7 @@ type ModelOutput = Vec<f32>;
 use crate::{
     behavior::{
         BehaviorConfig,
+        behaviors::look_around,
         engine::{
             Behavior, BehaviorState, RlBehaviorInput, RlBehaviorOutput, in_behavior,
             spawn_rl_behavior,
@@ -23,7 +23,7 @@ use crate::{
     },
     localization::RobotPose,
     motion::walking_engine::{FootSwitchedEvent, Gait, step::Step, step_context::StepContext},
-    nao::{Cycle, NaoManager, Priority},
+    nao::{Cycle, NaoManager},
 };
 
 pub struct RlStrikerSearchBehaviorPlugin;
@@ -188,30 +188,5 @@ fn handle_inference_output(
         observe_config.head_rotation_speed,
         observe_config.head_yaw_max,
         observe_config.head_pitch_max,
-    );
-}
-
-fn look_around(
-    nao_manager: &mut NaoManager,
-    starting_time: Instant,
-    rotation_speed: f32,
-    yaw_multiplier: f32,
-    pitch_multiplier: f32,
-) {
-    // Used to parameterize the yaw and pitch angles, multiplying with a large
-    // rotation speed will make the rotation go faster.
-    let movement_progress = starting_time.elapsed().as_secs_f32() * rotation_speed;
-    let yaw = (movement_progress).sin() * yaw_multiplier;
-    let pitch = (movement_progress * 2.0 + std::f32::consts::FRAC_PI_2)
-        .sin()
-        .max(0.0)
-        * pitch_multiplier;
-
-    let position = HeadJoints { yaw, pitch };
-
-    nao_manager.set_head(
-        position,
-        HeadJoints::fill(NaoManager::HEAD_STIFFNESS),
-        Priority::default(),
     );
 }

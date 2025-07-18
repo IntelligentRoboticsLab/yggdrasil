@@ -1,10 +1,14 @@
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use bevy::prelude::*;
 use nalgebra::Point3;
 
 use crate::{
-    behavior::engine::{Behavior, BehaviorState, in_behavior},
+    behavior::{
+        BehaviorConfig,
+        behaviors::look_around,
+        engine::{Behavior, BehaviorState, in_behavior},
+    },
     localization::RobotPose,
     motion::{
         step_planner::{StepPlanner, Target},
@@ -19,18 +23,34 @@ pub struct WalkToBehaviorPlugin;
 
 impl Plugin for WalkToBehaviorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, walk_to.run_if(in_behavior::<WalkTo>));
+        app.add_systems(Update, walk_to.run_if(in_behavior::<WalkTo>))
+            .add_systems(OnEnter(BehaviorState::WalkTo), reset_observe_starting_time)
+            .insert_resource(ObserveStartingTime(Instant::now()));
     }
+}
+
+fn reset_observe_starting_time(mut observe_starting_time: ResMut<ObserveStartingTime>) {
+    observe_starting_time.0 = Instant::now();
+}
+
+#[derive(PartialEq)]
+pub enum LookMode {
+    AtTarget,
+    Observe,
 }
 
 #[derive(Resource)]
 pub struct WalkTo {
     pub target: Target,
+    pub look_mode: LookMode,
 }
 
 impl Behavior for WalkTo {
     const STATE: BehaviorState = BehaviorState::WalkTo;
 }
+
+#[derive(Resource, Deref)]
+struct ObserveStartingTime(Instant);
 
 fn walk_to(
     walk_to: Res<WalkTo>,
@@ -38,16 +58,29 @@ fn walk_to(
     mut step_planner: ResMut<StepPlanner>,
     mut step_context: ResMut<StepContext>,
     mut nao_manager: ResMut<NaoManager>,
+    observe_starting_time: Res<ObserveStartingTime>,
+    behavior_config: Res<BehaviorConfig>,
 ) {
     let target_point = Point3::new(walk_to.target.position.x, walk_to.target.position.y, 0.0);
 
-    let look_at = pose.get_look_at_absolute(&target_point);
-    nao_manager.set_head_target(
-        look_at,
-        HEAD_ROTATION_TIME,
-        Priority::default(),
-        NaoManager::HEAD_STIFFNESS,
-    );
+    if walk_to.look_mode == LookMode::AtTarget {
+        let look_at = pose.get_look_at_absolute(&target_point);
+        nao_manager.set_head_target(
+            look_at,
+            HEAD_ROTATION_TIME,
+            Priority::default(),
+            NaoManager::HEAD_STIFFNESS,
+        );
+    } else if walk_to.look_mode == LookMode::Observe {
+        let observe_config = &behavior_config.observe;
+        look_around(
+            &mut nao_manager,
+            **observe_starting_time,
+            observe_config.head_rotation_speed,
+            observe_config.head_yaw_max,
+            observe_config.head_pitch_max,
+        );
+    }
 
     // Check and clear existing target if different
     if step_planner

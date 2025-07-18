@@ -1,6 +1,7 @@
 use std::time::{Duration, Instant};
 
 use crate::{
+    behavior::{behaviors::Standup, engine::in_behavior},
     core::debug::{
         DebugContext,
         debug_system::{DebugAppExt, SystemToggle},
@@ -38,6 +39,7 @@ impl Plugin for StepContextPlugin {
             PreUpdate,
             plan_step
                 .run_if(on_event::<FootSwitchedEvent>)
+                .run_if(not(in_behavior::<Standup>))
                 .in_set(WalkingEngineSet::PlanStep)
                 .after(crate::kinematics::update_kinematics),
         );
@@ -80,10 +82,7 @@ impl StepContext {
 
     pub fn request_sit(&mut self) {
         self.requested_gait = Gait::Sitting;
-        self.last_step = PlannedStep {
-            swing_side: self.last_step.swing_side,
-            ..Default::default()
-        };
+        self.last_step = PlannedStep::default();
         self.requested_step = Step::default();
     }
 
@@ -157,12 +156,6 @@ impl StepContext {
         }
     }
 
-    pub fn request_reset(&mut self) {
-        self.requested_reset = true;
-        self.request_stand();
-        self.requested_gait = Gait::Standing;
-    }
-
     pub fn finish_step(&mut self) {
         self.last_step = self.planned_step;
     }
@@ -208,7 +201,7 @@ impl StepContext {
             target,
             swing_foot_height: config.base_foot_lift + foot_lift_modifier,
             swing_side: next_swing_foot,
-        }
+        };
     }
 }
 

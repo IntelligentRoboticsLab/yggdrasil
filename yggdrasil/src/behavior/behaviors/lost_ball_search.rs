@@ -19,7 +19,7 @@ const ROTATION_STIFFNESS: f32 = 0.3;
 #[serde_as]
 #[derive(Resource, Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
-pub struct ObserveBehaviorConfig {
+pub struct LostBallSearchBehaviorConfig {
     // Controls how fast the robot moves its head back and forth while looking around
     pub head_rotation_speed: f32,
     // Controls how far to the left and right the robot looks while looking around, in radians.
@@ -31,19 +31,19 @@ pub struct ObserveBehaviorConfig {
 }
 
 #[derive(Resource, Deref)]
-struct ObserveStartingTime(Instant);
+struct LostBallSearchStartingTime(Instant);
 
 /// This behavior makes the robot look around with a sinusoidal head movement with an optional step.
 /// With this behavior, the robot can observe its surroundings while standing still or turning.
 #[derive(Resource, Default)]
-pub struct Observe {
+pub struct LostBallSearch {
     pub step: Option<Step>,
 }
 
-impl Observe {
+impl LostBallSearch {
     #[must_use]
     pub fn with_turning(turn: f32) -> Self {
-        Observe {
+        LostBallSearch {
             step: Some(Step {
                 turn,
                 ..Default::default()
@@ -52,29 +52,34 @@ impl Observe {
     }
 }
 
-impl Behavior for Observe {
-    const STATE: BehaviorState = BehaviorState::Observe;
+impl Behavior for LostBallSearch {
+    const STATE: BehaviorState = BehaviorState::LostBallSearch;
 }
 
-pub struct ObserveBehaviorPlugin;
+pub struct LostBallSearchBehaviorPlugin;
 
-impl Plugin for ObserveBehaviorPlugin {
+impl Plugin for LostBallSearchBehaviorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, observe.run_if(in_behavior::<Observe>))
-            .add_systems(OnEnter(BehaviorState::Observe), reset_observe_starting_time)
-            .insert_resource(ObserveStartingTime(Instant::now()));
+        app.add_systems(Update, observe.run_if(in_behavior::<LostBallSearch>))
+            .add_systems(
+                OnEnter(BehaviorState::Observe),
+                reset_lost_ball_search_starting_time,
+            )
+            .insert_resource(LostBallSearchStartingTime(Instant::now()));
     }
 }
 
-fn reset_observe_starting_time(mut observe_starting_time: ResMut<ObserveStartingTime>) {
-    observe_starting_time.0 = Instant::now();
+fn reset_lost_ball_search_starting_time(
+    mut lost_ball_search_starting_time: ResMut<LostBallSearchStartingTime>,
+) {
+    lost_ball_search_starting_time.0 = Instant::now();
 }
 
 fn observe(
     mut nao_manager: ResMut<NaoManager>,
     behavior_config: Res<BehaviorConfig>,
-    observe: Res<Observe>,
-    observe_starting_time: Res<ObserveStartingTime>,
+    observe: Res<LostBallSearch>,
+    observe_starting_time: Res<LostBallSearchStartingTime>,
     mut step_context: ResMut<StepContext>,
 ) {
     let observe_config = &behavior_config.observe;
@@ -93,7 +98,7 @@ fn observe(
     }
 }
 
-pub fn look_around(
+fn look_around(
     nao_manager: &mut NaoManager,
     starting_time: Instant,
     rotation_speed: f32,
