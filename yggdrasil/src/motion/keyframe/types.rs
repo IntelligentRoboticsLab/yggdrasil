@@ -171,8 +171,8 @@ impl Motion {
             )
             .map_err(|err| {
                 miette!(format!(
-                    "Could not load submotion file during construction of motion, {}",
-                    err
+                    "Could not load submotion file during construction of motion ({:?}), {}",
+                    submotion_name, err
                 ))
             })?;
             motion.submotions.insert(submotion_name.clone(), submotion);
