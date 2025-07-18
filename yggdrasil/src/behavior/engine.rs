@@ -204,9 +204,7 @@ impl RoleState {
         }
 
         // check if the current role is striker
-        if *role_state == RoleState::Striker
-            && (player_number != 4 && player_number != 5)
-        {
+        if *role_state == RoleState::Striker && (player_number != 4 && player_number != 5) {
             if let Some(mut timer) = defender_switch_timer {
                 timer.timer.tick(time.delta());
                 if timer.timer.finished() {
