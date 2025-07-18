@@ -33,7 +33,7 @@ pub async fn receive_loop(
 
     loop {
         let Ok((_size, address)) = game_controller_socket.recv_from(&mut buffer).await else {
-            tracing::error!("Received invalid data from GameControllerSocket");
+            // tracing::error!("Received invalid data from GameControllerSocket");
             continue;
         };
 
@@ -47,13 +47,13 @@ pub async fn receive_loop(
         }
 
         let Ok(message) = GameControllerMessage::decode(&mut buffer.as_slice()) else {
-            tracing::error!("Could not decode GameControllerMessage");
+            // tracing::error!("Could not decode GameControllerMessage");
             continue;
         };
 
         if message.is_valid() {
             if let Err(err) = tx.unbounded_send((message, address)) {
-                tracing::error!("Failed to send game controller message: {err}");
+                // tracing::error!("Failed to send game controller message: {err}");
             }
         }
     }

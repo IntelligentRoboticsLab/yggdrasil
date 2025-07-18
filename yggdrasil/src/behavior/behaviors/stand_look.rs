@@ -48,5 +48,5 @@ fn stand_look_at(
         Priority::default(),
         NaoManager::HEAD_STIFFNESS,
     );
-    step_context.request_stand_with_height(StandingHeight::MAX);
+    step_context.request_stand();
 }

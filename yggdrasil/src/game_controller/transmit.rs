@@ -31,13 +31,13 @@ pub async fn send_loop(
 
     while let Some((message, mut addr)) = rx.next().await {
         if let Err(err) = message.encode(&mut buffer) {
-            tracing::warn!("Failed to encode game controller return message: {err}");
+            // tracing::warn!("Failed to encode game controller return message: {err}");
             continue;
         }
 
         addr.set_port(GAME_CONTROLLER_RETURN_PORT);
         if let Err(err) = sock.send_to(&buffer, addr).await {
-            tracing::warn!("Failed to send game controller return message: {err}");
+            // tracing::warn!("Failed to send game controller return message: {err}");
         }
         buffer.clear();
     }
