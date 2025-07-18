@@ -212,12 +212,12 @@ pub fn striker_role(
 //TODO: Make this a separate stand-alone behavior
 fn set_play(
     mut commands: Commands,
-    ball_tracker: Res<BallTracker>,
+    detected_ball_position: Res<TeamBallPosition>,
     pose: Res<RobotPose>,
     behavior_state: Res<State<BehaviorState>>,
     walk: Option<Res<Walk>>,
 ) {
-    let Some(relative_ball) = ball_tracker.stationary_ball() else {
+    let Some(relative_ball) = detected_ball_position.0 else {
         return;
     };
     let absolute_ball = pose.robot_to_world(&relative_ball);
