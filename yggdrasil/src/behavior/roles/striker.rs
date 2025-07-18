@@ -9,7 +9,7 @@ use crate::{
             LookMode, LostBallSearch, RlStrikerSearchBehavior, StandLookAt, Walk, WalkTo,
             WalkToBall,
         },
-        engine::{in_role, BehaviorState, CommandsBehaviorExt, RoleState, Roles},
+        engine::{BehaviorState, CommandsBehaviorExt, RoleState, Roles, in_role},
         primary_state::PrimaryState,
     },
     core::config::{
@@ -19,7 +19,7 @@ use crate::{
     localization::RobotPose,
     motion::{step_planner::Target, walking_engine::step::Step},
     nao::{NaoManager, Priority},
-    vision::ball_detection::{ball_tracker::BallTracker, TeamBallPosition},
+    vision::ball_detection::{TeamBallPosition, ball_tracker::BallTracker},
 };
 
 use std::time::Duration;
@@ -98,6 +98,7 @@ fn reset_striker_role(mut nao_manager: ResMut<NaoManager>) {
     nao_manager.set_right_eye_led(RightEye::fill(color::f32::EMPTY), Priority::default());
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn striker_role(
     mut commands: Commands,
     pose: Res<RobotPose>,
@@ -108,7 +109,6 @@ pub fn striker_role(
     lost_ball_timer: Option<ResMut<LostBallSearchTimer>>,
     time: Res<Time>,
 ) {
-        
     let Some(relative_ball) = detected_ball_position.0 else {
         if let Some(mut timer) = lost_ball_timer {
             timer.timer.tick(time.delta()); // <- tick the timer
