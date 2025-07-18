@@ -91,9 +91,9 @@ pub fn finalize(
 }
 
 #[derive(Default, Debug)]
-struct JointSettings<T> {
-    joints_position: T,
-    joints_stiffness: T,
+pub struct JointSettings<T> {
+    pub joints_position: T,
+    pub joints_stiffness: T,
     priority: Option<Priority>,
 }
 
@@ -352,6 +352,10 @@ impl NaoManager {
         );
 
         self
+    }
+
+    pub fn current_legs(&self) -> &JointSettings<LegJoints<JointValue>> {
+        &self.leg_settings
     }
 
     /// Sets the joint position and stiffness of the arm joints.
