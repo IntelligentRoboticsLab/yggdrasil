@@ -48,6 +48,7 @@ impl Behavior for WalkToSet {
 const INDIRECT_KICK_POSITION: [f32; 2] = [0.4, 0.4];
 const INDIRECT_KICK_ROTATION: f32 = -135.0;
 
+#[allow(clippy::too_many_arguments)]
 fn walk_to_set(
     pose: Res<RobotPose>,
     (layout_config, player_config): (Res<LayoutConfig>, Res<PlayerConfig>),
