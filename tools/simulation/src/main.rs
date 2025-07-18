@@ -4,7 +4,7 @@ use bevy::app::{AppLabel, MainSchedulePlugin};
 use bevy::ecs::event::EventRegistry;
 use bevy::state::app::StatesPlugin;
 use bevy::{prelude::*, render::camera::Viewport, window::PrimaryWindow};
-use bevy_egui::egui::{Direction, Layout, RichText, Ui};
+use bevy_egui::egui::{RichText, Ui};
 use bevy_egui::{EguiContexts, EguiPlugin, egui};
 use bifrost::communication::{
     CompetitionPhase, CompetitionType, GameControllerMessage, GamePhase, GameState, Half, Penalty,
@@ -63,6 +63,11 @@ pub struct Simulation {
     ball_position: Point2<f32>,
     ball_velocity: Vec2,                   // Add velocity
     gamecontroller: GameControllerMessage, // Add gamecontroller
+    // Timer management
+    game_timer: f32,                       // Time since game started (in seconds)
+    secondary_timer: f32,                  // Secondary timer for set plays
+    is_secondary_timer_active: bool,       // Whether secondary timer is counting down
+    last_state_change: Option<Instant>,    // Track when state changes occur
 }
 
 impl Default for Simulation {
@@ -72,6 +77,10 @@ impl Default for Simulation {
             ball_position: Point2::new(1.0, 1.0),
             ball_velocity: Vec2::ZERO,                // Start stationary
             gamecontroller: initial_gamecontroller(), // Initialize
+            game_timer: 0.0,
+            secondary_timer: 0.0,
+            is_secondary_timer_active: false,
+            last_state_change: None,
         }
     }
 }
@@ -108,6 +117,9 @@ fn main() {
                 update_ball_motion,           // Add ball motion system
                 handle_ball_robot_collisions, // Add collision system
                 update_ball_visual,           // <-- add this
+                update_game_timer,            // Game timer system
+                handle_state_transitions,     // Handle state change logic
+                manage_kickoffs,             // <-- add kickoff management
             ),
         );
 
@@ -260,30 +272,46 @@ fn initial_gamecontroller() -> GameControllerMessage {
         header: Default::default(),
         version: Default::default(),
         packet_number: Default::default(),
-        players_per_team: Default::default(),
+        players_per_team: 5, // SPL standard
         competition_phase: CompetitionPhase::RoundRobin,
         competition_type: CompetitionType::Normal,
         game_phase: GamePhase::Normal,
         state: GameState::Initial,
         set_play: SetPlay::None,
         first_half: Half::First,
-        kicking_team: Default::default(),
-        secs_remaining: Default::default(),
-        secondary_time: Default::default(),
-        teams: [TeamInfo {
-            team_number: 8,
-            field_player_colour: TeamColor::Red,
-            goalkeeper_colour: TeamColor::Black,
-            goalkeeper: 1,
-            score: 0,
-            penalty_shot: 0,
-            single_shots: 0,
-            message_budget: 1200,
-            players: [RobotInfo {
-                penalty: Penalty::None,
-                secs_till_unpenalised: 0,
-            }; 20],
-        }; 2],
+        kicking_team: 8, // Team 8 kicks off in first half
+        secs_remaining: 10 * 60, // 10 minutes per half in SPL
+        secondary_time: 0,
+        teams: [
+            TeamInfo {
+                team_number: 8,
+                field_player_colour: TeamColor::Red,
+                goalkeeper_colour: TeamColor::Black,
+                goalkeeper: 1,
+                score: 0,
+                penalty_shot: 0,
+                single_shots: 0,
+                message_budget: 1200,
+                players: [RobotInfo {
+                    penalty: Penalty::None,
+                    secs_till_unpenalised: 0,
+                }; 20],
+            },
+            TeamInfo {
+                team_number: 24,
+                field_player_colour: TeamColor::Blue,
+                goalkeeper_colour: TeamColor::Yellow,
+                goalkeeper: 1,
+                score: 0,
+                penalty_shot: 0,
+                single_shots: 0,
+                message_budget: 1200,
+                players: [RobotInfo {
+                    penalty: Penalty::None,
+                    secs_till_unpenalised: 0,
+                }; 20],
+            },
+        ],
     }
 }
 
@@ -365,23 +393,22 @@ fn ui_main(
         .max_width(window.width() * 0.5)
         .resizable(true)
         .show(ctx, |ui| {
-            // Top-aligned, horizontally centered scoreboard
             ui.add_space(20.0);
             ui.vertical_centered(|ui| {
                 ui.label(
-                    egui::RichText::new("SCOREBOARD")
-                        .size(32.0)
+                    egui::RichText::new("GAME CONTROLLER")
+                        .size(28.0)
                         .color(egui::Color32::from_rgb(255, 215, 0))
                         .strong()
                         .underline(),
                 );
-                ui.add_space(20.0);
+                ui.add_space(15.0);
 
-                // Score display with team colors using columns with constrained height
+                // Score display with team colors
                 let score_a = simulation.gamecontroller.teams[0].score;
                 let score_b = simulation.gamecontroller.teams[1].score;
                 ui.allocate_ui_with_layout(
-                    egui::Vec2::new(ui.available_width(), 70.0), // Fixed height
+                    egui::Vec2::new(ui.available_width(), 70.0),
                     egui::Layout::top_down(egui::Align::Center),
                     |ui| {
                         ui.columns(3, |columns| {
@@ -389,17 +416,17 @@ fn ui_main(
                                 egui::Layout::right_to_left(egui::Align::Center),
                                 |ui| {
                                     ui.label(
-                                        egui::RichText::new(format!("{}", score_a))
-                                            .size(60.0)
-                                            .color(egui::Color32::from_rgb(255, 140, 0)) // Orange
+                                        egui::RichText::new(format!("Team 8\n{}", score_a))
+                                            .size(24.0)
+                                            .color(egui::Color32::from_rgb(255, 140, 0))
                                             .strong(),
                                     );
                                 },
                             );
                             columns[1].centered_and_justified(|ui| {
                                 ui.label(
-                                    egui::RichText::new("-")
-                                        .size(48.0)
+                                    egui::RichText::new("VS")
+                                        .size(20.0)
                                         .color(egui::Color32::WHITE)
                                         .strong(),
                                 );
@@ -408,9 +435,9 @@ fn ui_main(
                                 egui::Layout::left_to_right(egui::Align::Center),
                                 |ui| {
                                     ui.label(
-                                        egui::RichText::new(format!("{}", score_b))
-                                            .size(60.0)
-                                            .color(egui::Color32::from_rgb(0, 191, 255)) // DeepSkyBlue (opposite to orange)
+                                        egui::RichText::new(format!("Team 24\n{}", score_b))
+                                            .size(24.0)
+                                            .color(egui::Color32::from_rgb(0, 191, 255))
                                             .strong(),
                                     );
                                 },
@@ -421,6 +448,107 @@ fn ui_main(
 
                 ui.add_space(20.0);
                 ui.separator();
+                ui.add_space(10.0);
+                
+                // Game Status Information
+                ui.group(|ui| {
+                    ui.vertical_centered(|ui| {
+                        ui.label(egui::RichText::new("GAME STATUS").size(18.0).strong());
+                        ui.add_space(5.0);
+                        
+                        // Current state
+                        ui.horizontal(|ui| {
+                            ui.label("State:");
+                            ui.label(egui::RichText::new(format!("{:?}", simulation.gamecontroller.state))
+                                .color(match simulation.gamecontroller.state {
+                                    GameState::Initial => egui::Color32::GRAY,
+                                    GameState::Ready => egui::Color32::YELLOW,
+                                    GameState::Set => egui::Color32::from_rgb(255, 165, 0),
+                                    GameState::Playing => egui::Color32::GREEN,
+                                    GameState::Finished => egui::Color32::RED,
+                                    GameState::Standby => egui::Color32::LIGHT_BLUE,
+                                }));
+                        });
+                        
+                        // Half
+                        ui.horizontal(|ui| {
+                            ui.label("Half:");
+                            ui.label(egui::RichText::new(match simulation.gamecontroller.first_half {
+                                Half::First => "First",
+                                Half::Second => "Second",
+                            }));
+                        });
+                        
+                        // Set play
+                        if simulation.gamecontroller.set_play != SetPlay::None {
+                            ui.horizontal(|ui| {
+                                ui.label("Set Play:");
+                                ui.label(egui::RichText::new(format!("{:?}", simulation.gamecontroller.set_play))
+                                    .color(egui::Color32::YELLOW));
+                            });
+                        }
+                        
+                        // Kicking team
+                        ui.horizontal(|ui| {
+                            ui.label("Kicking Team:");
+                            ui.label(egui::RichText::new(format!("Team {}", simulation.gamecontroller.kicking_team))
+                                .color(if simulation.gamecontroller.kicking_team == 8 {
+                                    egui::Color32::from_rgb(255, 140, 0)
+                                } else {
+                                    egui::Color32::from_rgb(0, 191, 255)
+                                }));
+                        });
+                        
+                        // Game time
+                        ui.horizontal(|ui| {
+                            ui.label("Game Time:");
+                            let mins = simulation.gamecontroller.secs_remaining / 60;
+                            let secs = simulation.gamecontroller.secs_remaining % 60;
+                            ui.label(egui::RichText::new(format!("{}:{:02}", mins, secs))
+                                .color(egui::Color32::GREEN));
+                        });
+                        
+                        // Secondary time (if active)
+                        if simulation.gamecontroller.secondary_time > 0 {
+                            ui.horizontal(|ui| {
+                                ui.label("Secondary Time:");
+                                ui.label(egui::RichText::new(format!("{}", simulation.gamecontroller.secondary_time))
+                                    .color(egui::Color32::YELLOW)
+                                    .strong());
+                            });
+                        }
+                    });
+                });
+
+                ui.add_space(10.0);
+                ui.separator();
+                ui.add_space(10.0);
+                
+                // Quick Actions
+                ui.group(|ui| {
+                    ui.vertical_centered(|ui| {
+                        ui.label(egui::RichText::new("QUICK ACTIONS").size(18.0).strong());
+                        ui.add_space(5.0);
+                        
+                        if ui.button("Goal Team 8").clicked() {
+                            simulation.gamecontroller.teams[0].score += 1;
+                        }
+                        
+                        if ui.button("Goal Team 24").clicked() {
+                            simulation.gamecontroller.teams[1].score += 1;
+                        }
+                        
+                        if ui.button("Reset Scores").clicked() {
+                            simulation.gamecontroller.teams[0].score = 0;
+                            simulation.gamecontroller.teams[1].score = 0;
+                        }
+                        
+                        if ui.button("Reset Ball Position").clicked() {
+                            simulation.ball_position = Point2::new(0.0, 0.0);
+                            simulation.ball_velocity = Vec2::ZERO;
+                        }
+                    });
+                });
             });
 
             // Fill the rest of the available rect
@@ -436,7 +564,68 @@ fn ui_main(
         .max_height(window.height() * 0.33)
         .resizable(true)
         .show(ctx, |ui| {
-            ui.label("Bottom resizeable panel");
+            ui.vertical(|ui| {
+                ui.label(egui::RichText::new("GAME LOG & CONTROLS").size(18.0).strong());
+                ui.separator();
+                
+                ui.horizontal(|ui| {
+                    // Ball controls
+                    ui.group(|ui| {
+                        ui.label("Ball Controls:");
+                        ui.horizontal(|ui| {
+                            if ui.button("Kick Left").clicked() {
+                                simulation.ball_velocity = Vec2::new(-2.0, 0.0);
+                            }
+                            if ui.button("Kick Right").clicked() {
+                                simulation.ball_velocity = Vec2::new(2.0, 0.0);
+                            }
+                            if ui.button("Kick Up").clicked() {
+                                simulation.ball_velocity = Vec2::new(0.0, 2.0);
+                            }
+                            if ui.button("Kick Down").clicked() {
+                                simulation.ball_velocity = Vec2::new(0.0, -2.0);
+                            }
+                            if ui.button("Stop Ball").clicked() {
+                                simulation.ball_velocity = Vec2::ZERO;
+                            }
+                        });
+                    });
+                    
+                    ui.separator();
+                    
+                    // Game flow controls
+                    ui.group(|ui| {
+                        ui.label("Game Flow:");
+                        ui.horizontal(|ui| {
+                            if ui.button("Initial → Ready").clicked() && simulation.state == GameState::Initial {
+                                simulation.state = GameState::Ready;
+                            }
+                            if ui.button("Ready → Set").clicked() && simulation.state == GameState::Ready {
+                                simulation.state = GameState::Set;
+                            }
+                            if ui.button("Set → Playing").clicked() && simulation.state == GameState::Set {
+                                simulation.state = GameState::Playing;
+                            }
+                            if ui.button("Reset to Initial").clicked() {
+                                simulation.state = GameState::Initial;
+                                simulation.gamecontroller.set_play = SetPlay::None;
+                            }
+                        });
+                    });
+                });
+                
+                ui.add_space(10.0);
+                
+                // Status display
+                ui.horizontal(|ui| {
+                    ui.label(format!("Ball Position: ({:.2}, {:.2})", 
+                        simulation.ball_position.x, simulation.ball_position.y));
+                    ui.separator();
+                    ui.label(format!("Ball Velocity: ({:.2}, {:.2})", 
+                        simulation.ball_velocity.x, simulation.ball_velocity.y));
+                });
+            });
+            
             ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
         })
         .response
@@ -463,35 +652,137 @@ fn ui_main(
 }
 
 fn ui_panel_top(simulation: &mut Simulation, ui: &mut Ui) {
-    let layout = Layout {
-        main_dir: Direction::LeftToRight,
-        main_wrap: false,
-        cross_justify: false,
-        ..Default::default()
-    };
-    ui.with_layout(layout, |ui| {
-        let mut button_size = ui.available_size();
-        button_size.x /= 5.0;
-
-        let layout = Layout::centered_and_justified(Direction::TopDown);
-        let game_states = [
-            GameState::Initial,
-            GameState::Ready,
-            GameState::Set,
-            GameState::Playing,
-            GameState::Finished,
-        ];
-        for state in &game_states {
-            ui.allocate_ui_with_layout(button_size, layout, |ui| {
-                ui.selectable_value(
-                    &mut simulation.state,
-                    *state,
-                    RichText::new(format!("{:?}", state))
-                        .size(40.0)
-                        .text_style(egui::TextStyle::Heading),
-                );
-            });
-        }
+    ui.vertical(|ui| {
+        // Game States Row
+        ui.horizontal(|ui| {
+            ui.label(RichText::new("Game State:").size(16.0).strong());
+            let game_states = [
+                GameState::Initial,
+                GameState::Ready,
+                GameState::Set,
+                GameState::Playing,
+                GameState::Finished,
+                GameState::Standby,
+            ];
+            
+            for state in &game_states {
+                let button_text = format!("{:?}", state);
+                let is_selected = simulation.state == *state;
+                
+                if ui.selectable_label(is_selected, 
+                    RichText::new(button_text)
+                        .size(14.0)
+                        .color(if is_selected { 
+                            egui::Color32::WHITE 
+                        } else { 
+                            egui::Color32::GRAY 
+                        })
+                ).clicked() {
+                    simulation.state = *state;
+                }
+            }
+        });
+        
+        ui.separator();
+        
+        // Set Plays Row
+        ui.horizontal(|ui| {
+            ui.label(RichText::new("Set Play:").size(16.0).strong());
+            let set_plays = [
+                SetPlay::None,
+                SetPlay::GoalKick,
+                SetPlay::CornerKick,
+                SetPlay::KickIn,
+                SetPlay::PenaltyKick,
+                SetPlay::PushingFreeKick,
+            ];
+            
+            for set_play in &set_plays {
+                let button_text = format!("{:?}", set_play);
+                let is_selected = simulation.gamecontroller.set_play == *set_play;
+                
+                if ui.selectable_label(is_selected,
+                    RichText::new(button_text)
+                        .size(14.0)
+                        .color(if is_selected { 
+                            egui::Color32::WHITE 
+                        } else { 
+                            egui::Color32::GRAY 
+                        })
+                ).clicked() {
+                    simulation.gamecontroller.set_play = *set_play;
+                    // Auto-position ball for set play
+                    reset_ball_for_setplay(simulation);
+                }
+            }
+        });
+        
+        ui.separator();
+        
+        // Half and Team Control Row
+        ui.horizontal(|ui| {
+            // Half toggle
+            ui.label(RichText::new("Half:").size(16.0).strong());
+            let half_text = match simulation.gamecontroller.first_half {
+                Half::First => "First Half",
+                Half::Second => "Second Half",
+            };
+            
+            if ui.button(RichText::new(half_text).size(14.0)).clicked() {
+                toggle_half(simulation);
+            }
+            
+            ui.separator();
+            
+            // Kicking team display
+            ui.label(RichText::new("Kicking Team:").size(16.0).strong());
+            ui.label(RichText::new(format!("Team {}", simulation.gamecontroller.kicking_team))
+                .size(14.0)
+                .color(if simulation.gamecontroller.kicking_team == 8 {
+                    egui::Color32::from_rgb(255, 140, 0) // Orange for team 8
+                } else {
+                    egui::Color32::from_rgb(0, 191, 255) // Blue for team 24
+                }));
+            
+            ui.separator();
+            
+            // Manual kicking team override
+            if ui.button("Toggle Kicking Team").clicked() {
+                simulation.gamecontroller.kicking_team = if simulation.gamecontroller.kicking_team == 8 { 24 } else { 8 };
+            }
+        });
+        
+        ui.separator();
+        
+        // Timer Information Row
+        ui.horizontal(|ui| {
+            ui.label(RichText::new("Game Time:").size(16.0).strong());
+            let mins = simulation.gamecontroller.secs_remaining / 60;
+            let secs = simulation.gamecontroller.secs_remaining % 60;
+            ui.label(RichText::new(format!("{}:{:02}", mins, secs))
+                .size(14.0)
+                .color(egui::Color32::GREEN));
+            
+            ui.separator();
+            
+            if simulation.is_secondary_timer_active {
+                ui.label(RichText::new("Secondary Time:").size(16.0).strong());
+                ui.label(RichText::new(format!("{}", simulation.gamecontroller.secondary_time))
+                    .size(14.0)
+                    .color(egui::Color32::YELLOW));
+            }
+            
+            ui.separator();
+            
+            // Reset timer button
+            if ui.button("Reset Timer").clicked() {
+                simulation.game_timer = 0.0;
+                simulation.gamecontroller.secs_remaining = 10 * 60;
+                simulation.secondary_timer = 0.0;
+                simulation.gamecontroller.secondary_time = 0;
+                simulation.is_secondary_timer_active = false;
+            }
+        });
     });
 }
 
@@ -789,3 +1080,136 @@ fn handle_ball_robot_collisions(mut simulation: ResMut<Simulation>, robots: Quer
         }
     }
 }
+
+// Game timer and state transition systems
+fn update_game_timer(mut simulation: ResMut<Simulation>, time: Res<Time>) {
+    // Update secondary timer if active
+    if simulation.is_secondary_timer_active {
+        simulation.secondary_timer -= time.delta_secs();
+        simulation.gamecontroller.secondary_time = simulation.secondary_timer.max(0.0) as i16;
+        
+        // Stop secondary timer when it reaches 0
+        if simulation.secondary_timer <= 0.0 {
+            simulation.is_secondary_timer_active = false;
+            simulation.secondary_timer = 0.0;
+            simulation.gamecontroller.secondary_time = 0;
+        }
+    }
+    
+    // Update main game timer only when playing
+    if simulation.state == GameState::Playing && !simulation.is_secondary_timer_active {
+        simulation.game_timer += time.delta_secs();
+        let remaining = (10.0 * 60.0) - simulation.game_timer; // 10 minutes per half
+        simulation.gamecontroller.secs_remaining = remaining.max(0.0) as i16;
+        
+        // Auto-finish when time runs out
+        if remaining <= 0.0 {
+            simulation.state = GameState::Finished;
+            simulation.gamecontroller.state = GameState::Finished;
+        }
+    }
+}
+
+fn handle_state_transitions(mut simulation: ResMut<Simulation>) {
+    // Check if state has changed
+    let state_changed = if let Some(last_change) = simulation.last_state_change {
+        last_change.elapsed().as_millis() > 100 // Debounce state changes
+    } else {
+        true
+    };
+    
+    if state_changed && simulation.state != simulation.gamecontroller.state {
+        // Update gamecontroller state
+        simulation.gamecontroller.state = simulation.state;
+        simulation.last_state_change = Some(Instant::now());
+        
+        // Handle specific state transitions
+        match simulation.state {
+            GameState::Playing => {
+                // Start 5-second secondary timer when transitioning to Playing
+                simulation.secondary_timer = 5.0;
+                simulation.gamecontroller.secondary_time = 5;
+                simulation.is_secondary_timer_active = true;
+            },
+            GameState::Ready => {
+                // Reset secondary timer
+                simulation.secondary_timer = 0.0;
+                simulation.gamecontroller.secondary_time = 0;
+                simulation.is_secondary_timer_active = false;
+            },
+            GameState::Set => {
+                // Stop timers in Set state
+                simulation.is_secondary_timer_active = false;
+            },
+            _ => {}
+        }
+    }
+}
+
+// Auto-kickoff management system
+fn manage_kickoffs(mut simulation: ResMut<Simulation>) {
+    // Handle kickoff after goals
+    if simulation.state == GameState::Ready && simulation.gamecontroller.set_play == SetPlay::None {
+        // After a goal, the team that didn't score gets the kickoff
+        // This logic can be enhanced based on game rules
+    }
+    
+    // Handle kickoff at start of half
+    if simulation.state == GameState::Initial {
+        simulation.gamecontroller.set_play = SetPlay::None;
+        // Kicking team is already set correctly by toggle_half function
+    }
+}
+
+// Enhanced ball reset for different scenarios
+fn reset_ball_for_setplay(simulation: &mut Simulation) {
+    match simulation.gamecontroller.set_play {
+        SetPlay::None => {
+            // Kickoff - ball at center
+            simulation.ball_position = Point2::new(0.0, 0.0);
+        },
+        SetPlay::GoalKick => {
+            // Ball near goal area
+            let x = if simulation.gamecontroller.kicking_team == 8 { -4.0 } else { 4.0 };
+            simulation.ball_position = Point2::new(x, 0.0);
+        },
+        SetPlay::CornerKick => {
+            // Ball at corner
+            simulation.ball_position = Point2::new(4.5, 3.0); // Adjust based on which corner
+        },
+        SetPlay::KickIn => {
+            // Ball at sideline
+            simulation.ball_position = Point2::new(0.0, 3.5);
+        },
+        SetPlay::PenaltyKick => {
+            // Ball at penalty spot
+            let x = if simulation.gamecontroller.kicking_team == 8 { 3.7 } else { -3.7 };
+            simulation.ball_position = Point2::new(x, 0.0);
+        },
+        SetPlay::PushingFreeKick => {
+            // Ball at free kick position (similar to kick in)
+            simulation.ball_position = Point2::new(0.0, 2.0);
+        },
+    }
+    simulation.ball_velocity = Vec2::ZERO;
+}
+
+// Helper function to toggle half and update kicking team
+fn toggle_half(simulation: &mut Simulation) {
+    simulation.gamecontroller.first_half = match simulation.gamecontroller.first_half {
+        Half::First => {
+            simulation.gamecontroller.kicking_team = 24; // Team 24 kicks off in second half
+            Half::Second
+        },
+        Half::Second => {
+            simulation.gamecontroller.kicking_team = 8; // Team 8 kicks off in first half
+            Half::First
+        }
+    };
+    
+    // Reset game timer for new half
+    simulation.game_timer = 0.0;
+    simulation.gamecontroller.secs_remaining = 10 * 60; // 10 minutes
+}
+
+// ...existing ball systems...
