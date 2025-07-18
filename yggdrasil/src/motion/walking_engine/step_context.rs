@@ -6,6 +6,7 @@ use crate::{
         debug_system::{DebugAppExt, SystemToggle},
     },
     kinematics::Kinematics,
+    motion::walking_engine::foot_support::FootSupportState,
     nao::Cycle,
 };
 
@@ -60,6 +61,7 @@ pub struct StepContext {
     stand_return_start: Option<Instant>,
     last_step: PlannedStep,
     pub planned_step: PlannedStep,
+    requested_reset: bool,
 }
 
 impl StepContext {
@@ -72,6 +74,7 @@ impl StepContext {
             stand_return_start: None,
             last_step,
             planned_step: last_step,
+            requested_reset: false,
         }
     }
 
@@ -154,6 +157,12 @@ impl StepContext {
         }
     }
 
+    pub fn request_reset(&mut self) {
+        self.requested_reset = true;
+        self.request_stand();
+        self.requested_gait = Gait::Standing;
+    }
+
     pub fn finish_step(&mut self) {
         self.last_step = self.planned_step;
     }
@@ -222,8 +231,13 @@ fn setup_step_visualizer(dbg: DebugContext) {
 pub(super) fn sync_gait_request(
     mut commands: Commands,
     current: Res<State<Gait>>,
-    step_context: Res<StepContext>,
+    mut step_context: ResMut<StepContext>,
 ) {
+    if step_context.requested_reset {
+        commands.insert_resource(FootSupportState::default());
+        step_context.requested_reset = false;
+    }
+
     if *current == step_context.requested_gait {
         return;
     }
