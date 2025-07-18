@@ -5,7 +5,7 @@ use nidhogg::types::{FillExt, RightEye, color};
 
 use crate::{
     behavior::{
-        behaviors::{RlStrikerSearchBehavior, StandLookAt, Walk, WalkTo, WalkToBall},
+        behaviors::{LookMode, RlStrikerSearchBehavior, StandLookAt, Walk, WalkTo, WalkToBall},
         engine::{BehaviorState, CommandsBehaviorExt, RoleState, Roles, in_role},
         primary_state::PrimaryState,
     },
@@ -176,6 +176,7 @@ fn set_play(
                 position: absolute_ball,
                 rotation: None,
             },
+            look_mode: LookMode::AtTarget,
         });
         return;
     }
