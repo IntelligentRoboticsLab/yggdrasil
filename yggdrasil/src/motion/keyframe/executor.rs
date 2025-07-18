@@ -11,6 +11,7 @@ use nidhogg::{
     types::{FillExt, JointArray},
 };
 use std::time::{Duration, Instant};
+use tracing::info;
 
 // maximum speed the robot is allowed to move to the starting position at
 const MAX_SPEED: f32 = 1.0;
@@ -91,6 +92,7 @@ pub fn keyframe_executor(
             duration,
             &movement_start.elapsed(),
         ) {
+            info!("moving_to_starting_position");
             nao_manager.set_all(
                 next_position,
                 HeadJoints::<f32>::fill(submotion_stiffness),
@@ -110,6 +112,7 @@ pub fn keyframe_executor(
         &sub_motion_name,
         keyframe_executor.active_motion.as_mut().unwrap(),
     ) {
+        info!("get_position");
         nao_manager.set_all(
             position,
             HeadJoints::<f32>::fill(submotion_stiffness),
@@ -125,6 +128,7 @@ pub fn keyframe_executor(
                 &mut keyframe_executor,
                 motion.submotions[&sub_motion_name].exit_waittime,
             ) {
+                info!("resting");
                 // returning the current nao position to prohibit any other position requests from taking over
                 nao_manager.set_all(
                     nao_state.position.clone(),
