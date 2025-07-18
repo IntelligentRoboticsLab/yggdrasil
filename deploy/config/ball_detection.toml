@@ -85,4 +85,4 @@ measurement_noise = 0.01 # ~10cm per measurement
 #
 # Note:
 # Currently we only track stationary balls, not moving ones.
-stationary_std_threshold = 0.75
+stationary_std_threshold = 0.9
