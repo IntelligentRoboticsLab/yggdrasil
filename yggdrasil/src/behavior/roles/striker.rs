@@ -9,7 +9,7 @@ use crate::{
             LookMode, LostBallSearch, RlStrikerSearchBehavior, StandLookAt, Walk, WalkTo,
             WalkToBall,
         },
-        engine::{in_role, BehaviorState, CommandsBehaviorExt, RoleState, Roles},
+        engine::{BehaviorState, CommandsBehaviorExt, RoleState, Roles, in_role},
         primary_state::PrimaryState,
     },
     core::config::{
@@ -19,7 +19,7 @@ use crate::{
     localization::RobotPose,
     motion::{step_planner::Target, walking_engine::step::Step},
     nao::{NaoManager, Priority},
-    vision::ball_detection::{ball_tracker::{self, BallTracker}, TeamBallPosition},
+    vision::ball_detection::{TeamBallPosition, ball_tracker::BallTracker},
 };
 
 use std::time::Duration;
@@ -104,9 +104,9 @@ pub fn striker_role(
     pose: Res<RobotPose>,
     layout_config: Res<LayoutConfig>,
     detected_ball_position: Res<TeamBallPosition>,
+    ball_tracker: Res<BallTracker>,
     mut nao_manager: ResMut<NaoManager>,
     lost_ball_timer: Option<ResMut<LostBallSearchTimer>>,
-    ball_tracker: Res<BallTracker>,
     time: Res<Time>,
 ) {
     let Some(relative_ball) = detected_ball_position.0 else {
@@ -131,8 +131,6 @@ pub fn striker_role(
         }
         return;
     };
-    let absolute_ball: nalgebra::OPoint<f32, nalgebra::Const<2>> =
-        pose.robot_to_world(&relative_ball);
 
     if ball_tracker.timestamp.elapsed().as_secs_f32() > 0.5 {
         if lost_ball_timer.is_none() {
