@@ -8,6 +8,7 @@ use filter::{CovarianceMatrix, UnscentedKalmanFilter};
 use heimdall::{Bottom, CameraLocation, CameraMatrix, Top};
 use itertools::Itertools;
 use ml::prelude::ModelExecutor;
+use ml::util::PatchResizer;
 use nalgebra::{Point2, Vector2};
 
 use serde::{Deserialize, Serialize};
@@ -160,7 +161,14 @@ fn classify_balls<T: CameraLocation>(
     mut ball_tracker: ResMut<BallTracker>,
     camera_matrix: Res<CameraMatrix<T>>,
     config: Res<BallDetectionConfig>,
+    mut patch_resizer: Local<Option<PatchResizer>>,
 ) {
+    if patch_resizer.is_none() {
+        *patch_resizer = Some(PatchResizer::new(
+            IMAGE_INPUT_SIZE as u32,
+            IMAGE_INPUT_SIZE as u32,
+        ));
+    }
     let classifier = &config.classifier;
     let start = Instant::now();
 
@@ -173,6 +181,7 @@ fn classify_balls<T: CameraLocation>(
 
     let mut confident_balls = Vec::new();
 
+    let resizer = patch_resizer.as_mut().unwrap();
     for proposal in sorted_proposals {
         if start.elapsed() > classifier.time_budget {
             break;
@@ -185,16 +194,11 @@ fn classify_balls<T: CameraLocation>(
             patch_size,
         );
 
-        let patch = ml::util::resize_patch(
-            (patch_size, patch_size),
-            (IMAGE_INPUT_SIZE, IMAGE_INPUT_SIZE),
-            patch,
-        );
+        resizer.resize_patch(&patch, (patch_size, patch_size));
 
-        // sigmoid is applied in model onnx
         let confidence = commands
             .infer_model(&mut model)
-            .with_input(&patch)
+            .with_input(&resizer.take())
             .spawn_blocking(ml::util::sigmoid);
 
         if confidence < classifier.confidence_threshold {
