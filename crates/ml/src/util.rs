@@ -51,24 +51,9 @@ impl PatchResizer {
     #[must_use]
     pub fn new(target_w: u32, target_h: u32) -> Self {
         let dst_image = Image::new(target_w, target_h, fir::PixelType::U8);
+        let resizer = Resizer::new();
 
-        #[cfg(not(target_arch = "x86_64"))]
-        {
-            let resizer = Resizer::new();
-            Self { resizer, dst_image }
-        }
-
-        #[cfg(target_arch = "x86_64")]
-        {
-            let mut resizer = Resizer::new();
-
-            if fir::CpuExtensions::Sse4_1.is_supported() {
-                unsafe {
-                    resizer.set_cpu_extensions(fir::CpuExtensions::Sse4_1);
-                }
-            }
-            Self { resizer, dst_image }
-        }
+        Self { resizer, dst_image }
     }
 
     /// Resize a grayscale patch (borrowed from the parent frame) into the
