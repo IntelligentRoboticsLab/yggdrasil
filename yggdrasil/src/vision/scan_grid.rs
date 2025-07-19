@@ -138,7 +138,7 @@ fn mean_and_std(data: &[f32]) -> (f32, f32) {
     (mean, variance.sqrt())
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Line {
     pub x: i32,
     pub y_max: i32,
@@ -158,6 +158,19 @@ pub struct ScanGrid<T: CameraLocation> {
     pub low_res_start: usize,
     /// Steps between low res grid lines
     pub low_res_step: usize,
+}
+
+impl<T: CameraLocation> Clone for ScanGrid<T> {
+    fn clone(&self) -> Self {
+        Self {
+            image: self.image.clone(),
+            y: self.y.clone(),
+            lines: self.lines.clone(),
+            field_limit: self.field_limit.clone(),
+            low_res_start: self.low_res_start.clone(),
+            low_res_step: self.low_res_step.clone(),
+        }
+    }
 }
 
 pub fn init_top_scan_grid(mut commands: Commands, image: Res<Image<Top>>) {
