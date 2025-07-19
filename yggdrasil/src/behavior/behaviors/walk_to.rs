@@ -10,7 +10,7 @@ use crate::{
         step_planner::{StepPlanner, Target},
         walking_engine::step_context::StepContext,
     },
-    nao::{HeadMotionManager, NaoManager, Priority},
+    nao::{HeadMotionManager, LookAt, NaoManager, Priority},
 };
 
 const HEAD_ROTATION_TIME: Duration = Duration::from_millis(500);
@@ -60,12 +60,10 @@ fn walk_to(
 
     if walk_to.look_mode == LookMode::AtTarget {
         let look_at = pose.get_look_at_absolute(&target_point);
-        nao_manager.set_head_target(
-            look_at,
-            HEAD_ROTATION_TIME,
-            Priority::default(),
-            NaoManager::HEAD_STIFFNESS,
-        );
+        head_motion_manager.request_look_at(LookAt {
+            pose: pose.clone(),
+            point: target_point,
+        });
     } else if walk_to.look_mode == LookMode::Observe {
         head_motion_manager.request_look_around();
     }
