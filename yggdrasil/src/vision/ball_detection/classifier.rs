@@ -1,82 +1,41 @@
+//! See [`BallClassifierPlugin`].
+
 use std::marker::PhantomData;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use bevy::prelude::*;
-use ml::{prelude::*, util::PatchResizer};
-use serde::{Deserialize, Serialize};
-use tasks::conditions::task_finished;
-
 use filter::{CovarianceMatrix, UnscentedKalmanFilter};
 use heimdall::{Bottom, CameraLocation, CameraMatrix, Top};
-use nalgebra::Point2;
+use itertools::Itertools;
+use ml::prelude::ModelExecutor;
+use nalgebra::{Point2, Vector2};
 
-use crate::{
-    core::debug::DebugContext,
-    localization::odometry::Odometry,
-    nao::Cycle,
-    vision::{
-        ball_detection::proposal::{BallProposal, BallProposals},
-        camera::init_camera,
-        referee::detect::VisualRefereeDetectionStatus,
-    },
-};
+use serde::{Deserialize, Serialize};
+use serde_with::{DurationMicroSeconds, serde_as};
 
-use super::{
-    BallDetectionConfig,
-    ball_tracker::{BallPosition, BallTracker},
-};
+use crate::core::debug::DebugContext;
+
+use crate::localization::odometry::Odometry;
+use crate::nao::Cycle;
+use crate::vision::camera::init_camera;
+use crate::vision::referee::detect::VisualRefereeDetectionStatus;
+use ml::prelude::*;
+
+use super::BallDetectionConfig;
+use super::ball_tracker::{BallPosition, BallTracker};
+use super::proposal::BallProposals;
 
 const IMAGE_INPUT_SIZE: usize = 32;
 
-/// Plugin for classifying ball proposals using a neural network.
-pub struct BallClassifierPlugin;
-
-impl Plugin for BallClassifierPlugin {
-    fn build(&self, app: &mut App) {
-        app.init_ml_model::<BallClassifierModel>()
-            .add_systems(PostStartup, init_ball_tracker.after(init_camera::<Top>))
-            .add_systems(
-                Update,
-                (
-                    update_ball_tracker,
-                    dispatch_ball_classification::<Top>
-                        .run_if(task_finished::<BallClassification<Top>>)
-                        .run_if(|p: Res<BallProposals<Top>>| !p.proposals.is_empty()),
-                    handle_ball_classification_result::<Top>
-                        .run_if(resource_exists_and_changed::<BallClassification<Top>>),
-                    dispatch_ball_classification::<Bottom>
-                        .run_if(task_finished::<BallClassification<Bottom>>)
-                        .run_if(|p: Res<BallProposals<Bottom>>| !p.proposals.is_empty()),
-                    handle_ball_classification_result::<Bottom>
-                        .run_if(resource_exists_and_changed::<BallClassification<Bottom>>),
-                )
-                    .chain()
-                    .run_if(in_state(VisualRefereeDetectionStatus::Inactive)),
-            );
-    }
-}
-
-fn init_ball_tracker(mut commands: Commands, config: Res<BallDetectionConfig>) {
-    let config = &config.classifier;
-
-    commands.insert_resource(BallTracker {
-        position_kf: UnscentedKalmanFilter::<2, 5, BallPosition>::new(
-            BallPosition(Point2::origin()),
-            CovarianceMatrix::from_diagonal_element(config.stationary_std_threshold.powi(2)), // variance = std^2, and we don't know where the ball is
-        ),
-        // prediction is done each cycle, this is roughly 1.7cm of std per cycle or 1.3 meters per second
-        prediction_noise: CovarianceMatrix::from_diagonal_element(config.prediction_noise),
-        sensor_noise: CovarianceMatrix::from_diagonal_element(config.measurement_noise),
-        cycle: Cycle::default(),
-        timestamp: Instant::now(),
-        stationary_variance_threshold: config.stationary_std_threshold.powi(2),
-    });
-}
-
+#[serde_as]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct BallClassifierConfig {
     /// Minimum confidence score threshold for accepting a ball detection
     pub confidence_threshold: f32,
+
+    /// The amount of time in microseconds we allow the classifier to run, proposals that take longer are discarded.
+    #[serde_as(as = "DurationMicroSeconds<u64>")]
+    pub time_budget: Duration,
 
     /// Process noise parameter for position prediction in the Kalman filter
     pub prediction_noise: f32,
@@ -93,20 +52,46 @@ pub struct BallClassifierConfig {
     pub stationary_std_threshold: f32,
 }
 
-#[derive(Resource, Debug, Clone)]
-pub struct BallClassification<T: CameraLocation + Clone> {
-    pub proposal: BallProposal,
-    pub confidence: f32,
-    pub cycle: Cycle, // image cycle the patch came from
-    _marker: PhantomData<T>,
+/// Plugin for classifying ball proposals produced by [`super::proposal::BallProposalPlugin`].
+///
+/// This plugin uses a cnn model to classify whether the proposals are balls or not.
+pub struct BallClassifierPlugin;
+
+impl Plugin for BallClassifierPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_ml_model::<BallClassifierModel>()
+            .add_systems(PostStartup, (init_ball_tracker.after(init_camera::<Top>),))
+            .add_systems(
+                Update,
+                (
+                    update_ball_tracker, // prediction step should run once each cycle
+                    classify_balls::<Top>.run_if(resource_exists_and_changed::<BallProposals<Top>>),
+                    classify_balls::<Bottom>
+                        .run_if(resource_exists_and_changed::<BallProposals<Bottom>>),
+                )
+                    .chain()
+                    .run_if(in_state(VisualRefereeDetectionStatus::Inactive)),
+            );
+    }
 }
 
-impl<T: CameraLocation + Clone> BallClassification<T> {
-    /// Was the net confident enough?
-    #[inline]
-    fn is_confident(&self, thresh: f32) -> bool {
-        self.confidence >= thresh
-    }
+fn init_ball_tracker(mut commands: Commands, config: Res<BallDetectionConfig>) {
+    let config = config.classifier.clone();
+
+    let ball_tracker = BallTracker {
+        position_kf: UnscentedKalmanFilter::<2, 5, BallPosition>::new(
+            BallPosition(Point2::new(0.0, 0.0)),
+            CovarianceMatrix::from_diagonal_element(config.stationary_std_threshold.powi(2)), // variance = std^2, and we don't know where the ball is
+        ),
+        // prediction is done each cycle, this is roughly 1.7cm of std per cycle or 1.3 meters per second
+        prediction_noise: CovarianceMatrix::from_diagonal_element(config.prediction_noise),
+        sensor_noise: CovarianceMatrix::from_diagonal_element(config.measurement_noise),
+        cycle: Cycle::default(),
+        timestamp: Instant::now(),
+        stationary_variance_threshold: config.stationary_std_threshold.powi(2), // variance = std^2
+    };
+
+    commands.insert_resource(ball_tracker);
 }
 
 pub(super) struct BallClassifierModel;
@@ -114,101 +99,144 @@ pub(super) struct BallClassifierModel;
 impl MlModel for BallClassifierModel {
     type Inputs = Vec<u8>;
     type Outputs = f32;
+
     const ONNX_PATH: &'static str = "models/ball_classifier.onnx";
 }
 
+#[derive(Debug)]
+pub struct Ball<T: CameraLocation> {
+    /// The position of the ball proposal in the image, in pixels.
+    pub position_image: Point2<f32>,
+    /// The vector from the robot to the ball proposal, in robot frame.
+    pub robot_to_ball: Vector2<f32>,
+    /// The absolute position of the ball proposal, in world frame.
+    pub position: Point2<f32>,
+    /// Velocity of the ball proposal, in world frame.
+    // pub velocity: Vector2<f32>,
+    /// The scale of the ball proposal.
+    pub scale: f32,
+    /// The distance to the ball in meters, at the time of detection.
+    pub distance: f32,
+    /// The timestamp the ball was detected at.
+    pub timestamp: Instant,
+    /// The confidence score assigned to the detected ball.
+    pub confidence: f32,
+    /// The cycle of the image this ball was detected in.
+    pub cycle: Cycle,
+    _marker: PhantomData<T>,
+}
+
+// NOTE: This needs to be implemented manually because of the `PhantomData`
+// https://github.com/rust-lang/rust/issues/26925
+impl<T: CameraLocation> Clone for Ball<T> {
+    fn clone(&self) -> Self {
+        Self {
+            position_image: self.position_image,
+            robot_to_ball: self.robot_to_ball,
+            position: self.position,
+            // velocity: self.velocity,
+            scale: self.scale,
+            distance: self.distance,
+            timestamp: self.timestamp,
+            confidence: self.confidence,
+            cycle: self.cycle,
+            _marker: PhantomData,
+        }
+    }
+}
+
+/// System that runs the prediction step for the UKF backing the ball tracker.
 fn update_ball_tracker(mut ball_tracker: ResMut<BallTracker>, odometry: Res<Odometry>) {
     ball_tracker.predict(&odometry);
 }
 
-fn dispatch_ball_classification<T: CameraLocation + Clone>(
+#[allow(clippy::too_many_arguments)]
+fn classify_balls<T: CameraLocation>(
+    ctx: DebugContext,
+    cycle: Res<Cycle>,
     mut commands: Commands,
     mut proposals: ResMut<BallProposals<T>>,
     mut model: ResMut<ModelExecutor<BallClassifierModel>>,
-    mut patch_resizer: Local<Option<PatchResizer>>,
-) {
-    // nothing left to classify
-    if proposals.proposals.is_empty() {
-        return;
-    }
-
-    let resizer = patch_resizer
-        .get_or_insert_with(|| PatchResizer::new(IMAGE_INPUT_SIZE as u32, IMAGE_INPUT_SIZE as u32));
-
-    // pick the "best" proposal (closest ball = smallest distance)
-    let idx_best = proposals
-        .proposals
-        .iter()
-        .enumerate()
-        .min_by(|(_, a), (_, b)| a.distance_to_ball.total_cmp(&b.distance_to_ball))
-        .map(|(i, _)| i)
-        .unwrap();
-
-    // remove it from the queue so we won't touch it again
-    let proposal = proposals.proposals.remove(idx_best);
-    let patch_size = proposal.scale as usize;
-    let patch = proposals.image.get_grayscale_patch(
-        (proposal.position.x, proposal.position.y),
-        patch_size,
-        patch_size,
-    );
-
-    resizer.resize_patch(&patch, (patch_size, patch_size));
-
-    let cycle = proposals.image.cycle();
-
-    commands
-        .infer_model(&mut model)
-        .with_input(&resizer.take())
-        .create_resource()
-        .spawn(move |raw_output| {
-            let confidence = ml::util::sigmoid(raw_output);
-
-            Some(BallClassification::<T> {
-                proposal,
-                confidence,
-                cycle,
-                _marker: PhantomData,
-            })
-        });
-}
-
-fn handle_ball_classification_result<T: CameraLocation + Clone>(
-    ctx: DebugContext,
-    classification: Res<BallClassification<T>>,
-    camera_matrix: Res<CameraMatrix<T>>,
     mut ball_tracker: ResMut<BallTracker>,
+    camera_matrix: Res<CameraMatrix<T>>,
     config: Res<BallDetectionConfig>,
 ) {
-    let result = classification.clone();
+    let classifier = &config.classifier;
+    let start = Instant::now();
 
-    // confidence gate
-    if result.is_confident(config.classifier.confidence_threshold) {
-        // project pixel to ground
-        if let Ok(robot_to_ball) =
-            camera_matrix.pixel_to_ground(result.proposal.position.cast(), 0.0)
-        {
-            // UKF measurement update
-            ball_tracker.measurement_update(BallPosition(robot_to_ball.xy()));
+    let sorted_proposals = proposals
+        .proposals
+        .drain(..)
+        .filter(|p| p.distance_to_ball <= 20.0)
+        .sorted_by(|a, b| a.distance_to_ball.total_cmp(&b.distance_to_ball))
+        .collect::<Vec<_>>();
+
+    let mut confident_balls = Vec::new();
+
+    for proposal in sorted_proposals {
+        if start.elapsed() > classifier.time_budget {
+            break;
         }
 
-        // log accepted detection
-        let (x1, y1, x2, y2) = result.proposal.bbox.inner;
+        let patch_size = proposal.scale as usize;
+        let patch = proposals.image.get_grayscale_patch(
+            (proposal.position.x, proposal.position.y),
+            patch_size,
+            patch_size,
+        );
+
+        let patch = ml::util::resize_patch(
+            (patch_size, patch_size),
+            (IMAGE_INPUT_SIZE, IMAGE_INPUT_SIZE),
+            patch,
+        );
+
+        // sigmoid is applied in model onnx
+        let confidence = commands
+            .infer_model(&mut model)
+            .with_input(&patch)
+            .spawn_blocking(ml::util::sigmoid);
+
+        if confidence < classifier.confidence_threshold {
+            continue;
+        }
+
+        let Ok(robot_to_ball) = camera_matrix.pixel_to_ground(proposal.position.cast(), 0.0) else {
+            tracing::warn!(?proposal.position, "failed to project ball position to ground");
+            continue;
+        };
+
+        let position = BallPosition(robot_to_ball.xy());
+
+        confident_balls.push((position, confidence, proposal.clone()));
+
+        // We only store the closest ball with high enough confidence
+        break;
+    }
+
+    if confident_balls.is_empty() {
         ctx.log_with_cycle(
             T::make_entity_image_path("balls/classifications"),
-            result.cycle,
-            &rerun::Boxes2D::from_mins_and_sizes([(x1, y1)], [(x2 - x1, y2 - y1)])
-                .with_labels([format!("{:.2}", result.confidence)]),
+            *cycle,
+            &rerun::Clear::flat(),
         );
     } else {
-        // not confident, clear log in Rerun
+        let (best_position, confidence, proposal) = confident_balls
+            .iter()
+            .max_by(|a, b| a.1.total_cmp(&b.1))
+            .unwrap();
+
+        ball_tracker.measurement_update(*best_position);
+
+        let (x1, y1, x2, y2) = proposal.bbox.inner;
+
         ctx.log_with_cycle(
             T::make_entity_image_path("balls/classifications"),
-            result.cycle,
-            &rerun::Clear::flat(),
+            proposals.image.cycle(),
+            &rerun::Boxes2D::from_mins_and_sizes([(x1, y1)], [(x2 - x1, y2 - y1)])
+                .with_labels([format!("{confidence:.2}")]),
         );
     }
 
-    // keep tracker cycle in sync
-    ball_tracker.cycle = result.cycle;
+    ball_tracker.cycle = proposals.image.cycle();
 }
