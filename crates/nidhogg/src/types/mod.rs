@@ -471,7 +471,7 @@ pub struct Touch {
 }
 
 /// Wrapper struct containing the head joints of the robot.
-#[derive(Builder, Clone, Debug, Default, Filler, PartialEq, Eq)]
+#[derive(Builder, Clone, Copy, Debug, Default, Filler, PartialEq, Eq)]
 pub struct HeadJoints<T> {
     pub yaw: T,
     pub pitch: T,
