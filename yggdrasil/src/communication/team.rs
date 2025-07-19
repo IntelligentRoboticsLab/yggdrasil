@@ -5,6 +5,7 @@ use std::time::Duration;
 use bevy::prelude::{App, *};
 use miette::IntoDiagnostic;
 use tracing::{debug, warn};
+use nalgebra as na;
 
 use crate::core::config::showtime::ShowtimeConfig;
 use crate::prelude::Result;
@@ -189,6 +190,7 @@ pub enum TeamMessage {
     Ping,
     Pong,
     DetectedWhistle,
+    DetectedBall(Option<na::Point2<f32>>),
     RecognizedRefereePose(RefereePose),
 }
 

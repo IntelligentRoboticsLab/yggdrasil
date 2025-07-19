@@ -2,7 +2,8 @@
 
 use std::io::{Read, Write};
 
-use nalgebra::{Dim, Matrix, Scalar, Storage, StorageMut};
+use nalgebra::{Dim, Matrix, Scalar, Storage, StorageMut, 
+    allocator::Allocator, base::default_allocator::DefaultAllocator, DinName, OPoint};
 
 use super::{Decode, Encode};
 
@@ -53,6 +54,36 @@ where
         }
 
         Ok(matrix)
+    }
+}
+
+impl<T, D> Encode for OPoint<T, D>
+where
+    T: Scalar + Encode,
+    D: DimName,
+    DefaultAllocator: Allocator<D>,
+{
+    fn encode(&self, mut write: impl Write) -> Result<()> {
+        self.coords.encode(&mut write)
+    }
+
+    fn encode_len(&self) -> usize {
+        self.coords.encode_len()
+    }
+}
+
+impl<T, D> Decode for OPoint<T, D>
+where
+    T: Scalar + Decode,
+    D: DimName,
+    DefaultAllocator: Allocator<D>,
+    <DefaultAllocator as Allocator<D>>::Buffer<T>: Default,
+{
+    fn decode(mut read: impl Read) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        Ok(Matrix::into(Matrix::decode(&mut read)?))
     }
 }
 

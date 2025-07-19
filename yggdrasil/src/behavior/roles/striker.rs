@@ -19,7 +19,7 @@ use crate::{
     localization::RobotPose,
     motion::{step_planner::Target, walking_engine::step::Step},
     nao::{NaoManager, Priority},
-    vision::ball_detection::ball_tracker::BallTracker,
+    vision::ball_detection::TeamBallPosition,
 };
 
 use std::time::Duration;
@@ -102,12 +102,12 @@ pub fn striker_role(
     mut commands: Commands,
     pose: Res<RobotPose>,
     layout_config: Res<LayoutConfig>,
-    ball_tracker: Res<BallTracker>,
+    team_ball_position: Res<TeamBallPosition>,
     mut nao_manager: ResMut<NaoManager>,
     lost_ball_timer: Option<ResMut<LostBallSearchTimer>>,
     time: Res<Time>,
 ) {
-    let Some(relative_ball) = ball_tracker.stationary_ball() else {
+    let Some(relative_ball) = team_ball_position.0 else {
         if let Some(mut timer) = lost_ball_timer {
             timer.timer.tick(time.delta()); // <- tick the timer
 
