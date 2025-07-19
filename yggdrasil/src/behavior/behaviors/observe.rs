@@ -6,7 +6,7 @@ use std::time::Instant;
 use crate::{
     behavior::engine::{Behavior, BehaviorState, in_behavior},
     motion::walking_engine::{StandingHeight, step::Step, step_context::StepContext},
-    nao::{HeadMotionManager, NaoManager},
+    nao::HeadMotionManager,
 };
 
 /// Config struct containing parameters for the initial behavior.
@@ -69,13 +69,11 @@ fn reset_observe_starting_time(mut observe_starting_time: ResMut<ObserveStarting
 }
 
 fn observe(
-    mut nao_manager: ResMut<NaoManager>,
     observe: Res<Observe>,
-    observe_starting_time: Res<ObserveStartingTime>,
     mut step_context: ResMut<StepContext>,
-    head_motion_manager: Res<HeadMotionManager>,
+    mut head_motion_manager: ResMut<HeadMotionManager>,
 ) {
-    head_motion_manager.look_around(&mut nao_manager, **observe_starting_time);
+    head_motion_manager.request_look_around();
 
     if let Some(step) = observe.step {
         step_context.request_walk(step);

@@ -10,7 +10,7 @@ use crate::{
         step_planner::{StepPlanner, Target},
         walking_engine::step_context::StepContext,
     },
-    nao::{HeadMotionManager, NaoManager},
+    nao::HeadMotionManager,
 };
 
 #[derive(Resource, Deref)]
@@ -47,9 +47,7 @@ fn walk_to_set(
     (layout_config, player_config): (Res<LayoutConfig>, Res<PlayerConfig>),
     mut step_planner: ResMut<StepPlanner>,
     mut step_context: ResMut<StepContext>,
-    mut nao_manager: ResMut<NaoManager>,
-    observe_starting_time: Res<ObserveStartingTime>,
-    head_motion_manager: ResMut<HeadMotionManager>,
+    mut head_motion_manager: ResMut<HeadMotionManager>,
 ) {
     let set_robot_position = layout_config
         .set_positions
@@ -73,5 +71,5 @@ fn walk_to_set(
         step_context.request_stand();
     }
 
-    head_motion_manager.look_around(&mut nao_manager, **observe_starting_time);
+    head_motion_manager.request_look_around();
 }
