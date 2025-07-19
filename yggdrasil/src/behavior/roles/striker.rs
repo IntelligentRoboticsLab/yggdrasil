@@ -9,7 +9,7 @@ use crate::{
             LookMode, LostBallSearch, RlStrikerSearchBehavior, StandLookAt, Walk, WalkTo,
             WalkToBall,
         },
-        engine::{BehaviorState, CommandsBehaviorExt, RoleState, Roles, in_role},
+        engine::{in_role, BehaviorState, CommandsBehaviorExt, RoleState, Roles},
         primary_state::PrimaryState,
     },
     core::config::{
@@ -19,7 +19,7 @@ use crate::{
     localization::RobotPose,
     motion::{step_planner::Target, walking_engine::step::Step},
     nao::{NaoManager, Priority},
-    vision::ball_detection::{TeamBallPosition, ball_tracker::BallTracker},
+    vision::ball_detection::{ball_tracker::{self, BallTracker}, TeamBallPosition},
 };
 
 use std::time::Duration;
@@ -106,6 +106,7 @@ pub fn striker_role(
     detected_ball_position: Res<TeamBallPosition>,
     mut nao_manager: ResMut<NaoManager>,
     lost_ball_timer: Option<ResMut<LostBallSearchTimer>>,
+    ball_tracker: Res<BallTracker>,
     time: Res<Time>,
 ) {
     let Some(relative_ball) = detected_ball_position.0 else {
