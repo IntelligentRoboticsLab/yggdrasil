@@ -7,7 +7,7 @@ use crate::{
     behavior::engine::{Behavior, BehaviorState, in_behavior},
     core::config::layout::LayoutConfig,
     localization::RobotPose,
-    nao::{NaoManager, Priority},
+    nao::{HeadMotionManager, LookAt, NaoManager, Priority},
     vision::referee::recognize::{RecognizeRefereePose, VisualRefereeRecognitionStatus},
 };
 
@@ -55,9 +55,9 @@ impl VisualRefHeadRotationTimer {
 fn detect_visual_referee(
     layout_config: Res<LayoutConfig>,
     robot_pose: Res<RobotPose>,
-    mut nao_manager: ResMut<NaoManager>,
     mut recognize_pose: EventWriter<RecognizeRefereePose>,
     mut timer: ResMut<VisualRefHeadRotationTimer>,
+    mut head_motion_manager: ResMut<HeadMotionManager>,
     time: Res<Time>,
 ) {
     // Make the robot look at the opposite T junction (relative to the starting)
@@ -70,14 +70,10 @@ fn detect_visual_referee(
         -field_y_max * world_position.y.signum(),
         REFEREE_AVG_HEIGHT / 2.,
     );
-    let look_at = robot_pose.get_look_at_absolute(&point3);
-
-    nao_manager.set_head_target(
-        look_at,
-        HEAD_ROTATION_TIME,
-        Priority::default(),
-        NaoManager::HEAD_STIFFNESS,
-    );
+    head_motion_manager.request_look_at(LookAt {
+        pose: robot_pose.clone(),
+        point: point3,
+    });
 
     timer.timer.tick(time.delta());
 

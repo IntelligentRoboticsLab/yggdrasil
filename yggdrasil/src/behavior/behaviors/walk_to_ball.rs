@@ -10,7 +10,7 @@ use crate::{
         step_planner::{StepPlanner, Target},
         walking_engine::step_context::StepContext,
     },
-    nao::{NaoManager, Priority},
+    nao::{HeadMotionManager, LookAt, NaoManager, Priority},
     vision::ball_detection::ball_tracker::BallTracker,
 };
 
@@ -35,6 +35,7 @@ fn walk_to_ball(
     pose: Res<RobotPose>,
     mut step_planner: ResMut<StepPlanner>,
     mut step_context: ResMut<StepContext>,
+    mut head_motion_manager: ResMut<HeadMotionManager>,
     mut nao_manager: ResMut<NaoManager>,
     ball_tracker: Res<BallTracker>,
 ) {
@@ -49,12 +50,10 @@ fn walk_to_ball(
     let target_point = Point3::new(ball.x, ball.y, 0.0);
 
     let look_at = pose.get_look_at_absolute(&target_point);
-    nao_manager.set_head_target(
-        look_at,
-        HEAD_ROTATION_TIME,
-        Priority::default(),
-        NaoManager::HEAD_STIFFNESS,
-    );
+    head_motion_manager.request_look_at(LookAt {
+        pose: pose.clone(),
+        point: target_point,
+    });
 
     // Check and clear existing target if different
     if step_planner
