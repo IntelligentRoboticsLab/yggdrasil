@@ -17,10 +17,13 @@ use crate::{
         showtime::PlayerConfig,
     },
     localization::RobotPose,
-    motion::walking_engine::{
-        config::KickingConfig,
-        step::Step,
-        step_context::{KickVariant, StepContext},
+    motion::{
+        step_planner::Target,
+        walking_engine::{
+            config::KickingConfig,
+            step::Step,
+            step_context::{KickVariant, StepContext},
+        },
     },
     nao::{NaoManager, Priority},
     vision::ball_detection::ball_tracker::BallTracker,
@@ -133,7 +136,6 @@ pub fn striker_role(
     mut nao_manager: ResMut<NaoManager>,
     time: Res<Time>,
     lost_ball_timer: Option<ResMut<LostBallSearchTimer>>,
-    time: Res<Time>,
     mut step_context: ResMut<StepContext>,
     kicking_config: Res<KickingConfig>,
 ) {
