@@ -1,4 +1,4 @@
-use std::{ops::Deref, sync::Arc};
+use std::{marker::PhantomData, ops::Deref, sync::Arc};
 
 use crate::{
     core::debug::{
@@ -15,11 +15,15 @@ use super::{
     field_boundary::FieldBoundary,
     scan_grid::{FieldColorApproximate, ScanGrid},
 };
-use bevy::prelude::*;
+use bevy::{
+    prelude::*,
+    tasks::{AsyncComputeTaskPool, Task},
+};
 
 use heimdall::{Bottom, CameraLocation, CameraPosition, Top, YuvPixel, YuyvImage};
 use nalgebra::Point2;
 use serde::{Deserialize, Serialize};
+use tasks::{CommandsExt, conditions::task_finished};
 use yggdrasil_rerun_comms::protocol::control::FieldColorConfig;
 
 #[derive(Resource, Debug, Clone, Serialize, Deserialize)]
@@ -100,12 +104,14 @@ impl Plugin for ScanLinesPlugin {
             .add_systems(
                 Update,
                 (
-                    update_scan_lines::<Top>
+                    spawn_scan_lines_task::<Top>
                         .after(super::scan_grid::update_top_scan_grid)
-                        .run_if(resource_exists_and_changed::<ScanGrid<Top>>),
-                    update_scan_lines::<Bottom>
+                        .run_if(resource_exists_and_changed::<ScanGrid<Top>>)
+                        .run_if(task_finished::<ScanLines<Top>>),
+                    spawn_scan_lines_task::<Bottom>
                         .after(super::scan_grid::update_bottom_scan_grid)
-                        .run_if(resource_exists_and_changed::<ScanGrid<Bottom>>),
+                        .run_if(resource_exists_and_changed::<ScanGrid<Bottom>>)
+                        .run_if(task_finished::<ScanLines<Bottom>>),
                 ),
             )
             .add_named_debug_systems(
@@ -172,6 +178,29 @@ impl<T: CameraLocation> ScanLines<T> {
             .line_spots()
             .chain(self.horizontal.line_spots())
     }
+}
+
+fn spawn_scan_lines_task<T: CameraLocation>(
+    mut commands: Commands,
+    cfg: Res<ScanLinesConfig>,
+    image: Res<Image<T>>,
+    grid: Res<ScanGrid<T>>,
+    field_boundary: Res<FieldBoundary>,
+) {
+    commands
+        .prepare_task(tasks::TaskPool::AsyncCompute)
+        .to_resource()
+        .spawn({
+            let cfg = cfg.clone();
+            let image = image.clone();
+            let grid = grid.clone();
+            let field_boundary = field_boundary.clone();
+
+            async move {
+                // Run the scan lines generation in a separate task
+                Some(get_scan_lines(&cfg, image, &grid, &field_boundary))
+            }
+        });
 }
 
 /// A set of classified scanline regions.
@@ -640,15 +669,15 @@ pub fn init_scan_lines<T: CameraLocation>(mut commands: Commands, image: Res<Ima
     commands.insert_resource(scan_lines);
 }
 
-pub fn update_scan_lines<T: CameraLocation>(
-    config: Res<ScanLinesConfig>,
-    mut scan_lines: ResMut<ScanLines<T>>,
-    image: Res<Image<T>>,
-    scan_grid: Res<ScanGrid<T>>,
-    field_boundary: Res<FieldBoundary>,
-) {
-    *scan_lines = get_scan_lines(&config, image.clone(), &scan_grid, &field_boundary);
-}
+// pub fn update_scan_lines<T: CameraLocation>(
+//     config: Res<ScanLinesConfig>,
+//     mut scan_lines: ResMut<ScanLines<T>>,
+//     image: Res<Image<T>>,
+//     scan_grid: Res<ScanGrid<T>>,
+//     field_boundary: Res<FieldBoundary>,
+// ) {
+//     *scan_lines = get_scan_lines(&config, image.clone(), &scan_grid, &field_boundary);
+// }
 
 /// Find the edge of a region in a scanline.
 ///
