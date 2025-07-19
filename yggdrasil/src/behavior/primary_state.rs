@@ -15,13 +15,14 @@ use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
 use std::time::Duration;
+// use tracing::info;
 
 use bifrost::communication::{GameControllerMessage, GameState};
 use nidhogg::types::color;
 
 use std::time::Instant;
 
-const GOAL_DELAY: u64 = 15;
+const GOAL_DELAY: u64 = 17;
 
 #[serde_as]
 #[derive(Resource, Serialize, Deserialize, Debug, Clone)]
@@ -157,6 +158,7 @@ pub fn update_primary_state(
 }
 
 #[must_use]
+#[allow(clippy::too_many_arguments)]
 pub fn next_primary_state(
     primary_state: &PrimaryState,
     game_controller_message: Option<&GameControllerMessage>,
@@ -200,10 +202,7 @@ pub fn next_primary_state(
                 ..
             }
         ) {
-            primary_state = PS::Ready {
-                referee_in_standby: false,
-                whistle_in_playing: false,
-            };
+            primary_state = PS::Set;
         }
     }
 
@@ -229,6 +228,15 @@ pub fn next_primary_state(
     ) || recognized_ready_pose;
 
     let previous_primary_state = primary_state;
+
+    // if matches!(primary_state, PS::Playing { .. }) && whistle.detected() {
+    //     primary_state = PS::Ready {
+    //         referee_in_standby: false,
+    //         whistle_in_playing: true,
+    //     };
+    //     whistle_timer.whistle_timer = Some(Instant::now());
+    // }
+
     primary_state = match game_controller_message {
         Some(message) => match message.state {
             GameState::Initial => PS::Initial,
@@ -268,6 +276,14 @@ pub fn next_primary_state(
         )
     {
         whistle_timer.whistle_timer = Some(Instant::now());
+        // info!("starting whistle");
+    }
+
+    // if we change from whistle_in_playing:true turn off timer
+    if previous_primary_state != primary_state && matches!(previous_primary_state, PS::Ready { .. })
+    {
+        whistle_timer.whistle_timer = None;
+        // info!("stopped whiste (switched state)")
     }
 
     // check if a timer was set
@@ -276,18 +292,27 @@ pub fn next_primary_state(
         // either it was a false positive, or it was okay and should also be reset
         if start_time.elapsed().as_secs() > GOAL_DELAY {
             whistle_timer.whistle_timer = None;
+            // info!(
+            //     "stopped whistle (GOAL DELAY). {:?}",
+            //     start_time.elapsed().as_secs()
+            // );
             // if it still has whistle_in_playing:true after the GOAL_DELAY, change to false
-            if matches! (primary_state, PS::Ready {whistle_in_playing:true, .. }) {
-                primary_state = PS::Ready {
-                    referee_in_standby: false,
-                    whistle_in_playing: false,
-                };
+            if matches!(
+                primary_state,
+                PS::Ready {
+                    whistle_in_playing: true,
+                    ..
+                }
+            ) {
+                primary_state = PS::Playing {
+                    whistle_in_set: false,
+                }
             }
         }
     }
 
     if previous_primary_state != primary_state {
-        println!("primary state is set to: {:?}", primary_state);
+        // println!("primary state is set to: {primary_state:?}");
     }
 
     if penalty_state.is_penalized() {
