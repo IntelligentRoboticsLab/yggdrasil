@@ -72,7 +72,7 @@ impl SoundManager {
 impl Default for SoundManager {
     fn default() -> Self {
         let audio_manager = AudioManager::new(AudioManagerSettings::default()).unwrap();
-        let volume_string = std::env::var(VOLUME_ENV_VARIABLE_NAME).unwrap_or("0.1".to_string());
+        let volume_string = std::env::var(VOLUME_ENV_VARIABLE_NAME).unwrap_or("-10.0".to_string());
         let volume: f32 = volume_string.parse().unwrap();
 
         SoundManager {
