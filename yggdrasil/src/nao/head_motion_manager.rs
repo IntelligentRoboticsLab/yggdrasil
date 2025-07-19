@@ -71,6 +71,16 @@ impl HeadMotionManager {
         self.requested_head_motion_settings = HeadMotionRequest::LookAround;
         self.requested_head_motion_state = HeadMotionState::LookAround;
     }
+
+    pub(crate) fn request_neutral(&mut self) {
+        self.requested_head_motion_state = HeadMotionState::FixedHead;
+        self.requested_head_motion_settings = HeadMotionRequest::FixedHead(FixedHead {
+            yaw: 0.0,
+            pitch: 0.0,
+            stiffness: 0.3,
+            priority: Priority::default(),
+        });
+    }
 }
 
 fn update_head_motion_state(

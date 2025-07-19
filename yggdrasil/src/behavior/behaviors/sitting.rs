@@ -3,9 +3,9 @@ use bevy::prelude::*;
 use nidhogg::types::{FillExt, RightEye, color};
 
 use crate::{
-    behavior::engine::{Behavior, BehaviorState, in_behavior},
+    behavior::engine::{in_behavior, Behavior, BehaviorState},
     motion::walking_engine::step_context::StepContext,
-    nao::{NaoManager, Priority},
+    nao::{HeadMotionManager, NaoManager, Priority},
 };
 
 pub struct SittingBehaviorPlugin;
@@ -25,8 +25,13 @@ impl Behavior for Sitting {
     const STATE: BehaviorState = BehaviorState::Sitting;
 }
 
-fn sitting(mut step_context: ResMut<StepContext>, mut nao_manager: ResMut<NaoManager>) {
+fn sitting(
+    mut step_context: ResMut<StepContext>,
+    mut nao_manager: ResMut<NaoManager>,
+    mut head_motion_manager: ResMut<HeadMotionManager>,
+) {
     // Makes right eye blue.
     nao_manager.set_right_eye_led(RightEye::fill(color::f32::BLUE), Priority::default());
     step_context.request_sit();
+    head_motion_manager.request_neutral()
 }

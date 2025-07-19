@@ -17,7 +17,7 @@ look_around_head_stiffness = 0.7
 # step that is requested to the walking engine.
 policy_output_scaling = { forward = 0.055, left = 0.07, turn = 0.2 }
 # Controls how fast the robot moves its head back and forth while looking around
-head_rotation_speed = 3.0
+head_rotation_speed = 2.0
 # Controls how far to the left and right the robot looks while looking around, in radians.
 # If this value is one, the robot will look a maximum of one radian to the left and one
 # radian to the right, etc.
