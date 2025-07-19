@@ -39,10 +39,7 @@ fn walk(
     pose: Res<RobotPose>,
 ) {
     if let Some(point) = walk.look_target {
-        head_motion_manager.request_look_at(LookAt {
-            pose: *pose,
-            point: point,
-        });
+        head_motion_manager.request_look_at(LookAt { pose: *pose, point });
     }
 
     step_planner.clear_target();

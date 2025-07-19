@@ -4,17 +4,13 @@ use bevy::prelude::*;
 use nalgebra::Point3;
 
 use crate::{
-    behavior::{
-        BehaviorConfig,
-        behaviors::look_around,
-        engine::{Behavior, BehaviorState, in_behavior},
-    },
+    behavior::engine::{Behavior, BehaviorState, in_behavior},
     localization::RobotPose,
     motion::{
         step_planner::{StepPlanner, Target},
         walking_engine::step_context::StepContext,
     },
-    nao::{NaoManager, Priority},
+    nao::{HeadMotionManager, NaoManager, Priority},
 };
 
 const HEAD_ROTATION_TIME: Duration = Duration::from_millis(500);
@@ -58,8 +54,7 @@ fn walk_to(
     mut step_planner: ResMut<StepPlanner>,
     mut step_context: ResMut<StepContext>,
     mut nao_manager: ResMut<NaoManager>,
-    observe_starting_time: Res<ObserveStartingTime>,
-    behavior_config: Res<BehaviorConfig>,
+    mut head_motion_manager: ResMut<HeadMotionManager>,
 ) {
     let target_point = Point3::new(walk_to.target.position.x, walk_to.target.position.y, 0.0);
 
@@ -72,14 +67,7 @@ fn walk_to(
             NaoManager::HEAD_STIFFNESS,
         );
     } else if walk_to.look_mode == LookMode::Observe {
-        let observe_config = &behavior_config.observe;
-        look_around(
-            &mut nao_manager,
-            **observe_starting_time,
-            observe_config.head_rotation_speed,
-            observe_config.head_yaw_max,
-            observe_config.head_pitch_max,
-        );
+        head_motion_manager.request_look_around();
     }
 
     // Check and clear existing target if different

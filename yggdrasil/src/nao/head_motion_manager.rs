@@ -68,6 +68,7 @@ impl HeadMotionManager {
             self.look_around_starting_time = Some(Instant::now());
         }
 
+        self.requested_head_motion_settings = HeadMotionRequest::LookAround;
         self.requested_head_motion_state = HeadMotionState::LookAround;
     }
 }
@@ -97,7 +98,7 @@ fn look_at(
         head_motion_manager.requested_head_motion_settings
     {
         *look_at = look_at_request;
-    };
+    }
 
     let observe_config = &behavior_config.observe;
 
@@ -107,7 +108,7 @@ fn look_at(
     nao_manager.set_head(joint_positions, joint_stiffness, Priority::default());
 }
 
-/// FixedHead resource which contains the data, used in the fixed head motion system
+/// `FixedHead` resource which contains the data, used in the fixed head motion system
 #[derive(Resource, Default, Clone, Copy)]
 pub(crate) struct FixedHead {
     pub(crate) yaw: f32,
@@ -126,7 +127,7 @@ fn fixed_head(
         head_motion_manager.requested_head_motion_settings
     {
         *fixed_head = fixed_head_request;
-    };
+    }
 
     let joint_positions = HeadJoints {
         yaw: fixed_head.yaw,
