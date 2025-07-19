@@ -62,7 +62,7 @@ impl SoundManager {
         let streaming_sound = StreamingSoundData::from_file(sound.file_path())
             .into_diagnostic()
             .with_context(|| format!("Failed to load sound file: {}", sound.file_path()))?
-            .with_settings(StreamingSoundSettings::new().volume(self.volume));
+            .with_settings(StreamingSoundSettings::new().volume(-1.0 / self.volume));
 
         audio_manager.play(streaming_sound).into_diagnostic()?;
         Ok(())
