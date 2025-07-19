@@ -62,7 +62,7 @@ impl SoundManager {
         let streaming_sound = StreamingSoundData::from_file(sound.file_path())
             .into_diagnostic()
             .with_context(|| format!("Failed to load sound file: {}", sound.file_path()))?
-            .with_settings(StreamingSoundSettings::new().volume(-1.0 / self.volume));
+            .with_settings(StreamingSoundSettings::new().volume(self.volume));
 
         audio_manager.play(streaming_sound).into_diagnostic()?;
         Ok(())
@@ -72,7 +72,7 @@ impl SoundManager {
 impl Default for SoundManager {
     fn default() -> Self {
         let audio_manager = AudioManager::new(AudioManagerSettings::default()).unwrap();
-        let volume_string = std::env::var(VOLUME_ENV_VARIABLE_NAME).unwrap_or("0.1".to_string());
+        let volume_string = std::env::var(VOLUME_ENV_VARIABLE_NAME).unwrap_or("-10.0".to_string());
         let volume: f32 = volume_string.parse().unwrap();
 
         SoundManager {
