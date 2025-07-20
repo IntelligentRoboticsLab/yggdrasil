@@ -1,6 +1,5 @@
 use crate::{
-    behavior::primary_state,
-    core::audio::whistle_detection::{self, Whistle},
+    core::audio::whistle_detection::Whistle,
     game_controller::{GameControllerMessageEvent, penalty::PenaltyState},
     kinematics::Kinematics,
     motion::walking_engine::config::WalkingEngineConfig,
@@ -159,6 +158,7 @@ pub fn update_primary_state(
 
 #[must_use]
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_lines)]
 pub fn next_primary_state(
     primary_state: &PrimaryState,
     game_controller_message: Option<&GameControllerMessage>,
@@ -189,7 +189,7 @@ pub fn next_primary_state(
         return primary_state;
     }
 
-    // makes sure "set" is not skipped
+    // makes sure "set" is not skipped after a goal
     if let Some(GameControllerMessage {
         state: GameState::Set,
         ..
@@ -228,14 +228,6 @@ pub fn next_primary_state(
     ) || recognized_ready_pose;
 
     let previous_primary_state = primary_state;
-
-    // if matches!(primary_state, PS::Playing { .. }) && whistle.detected() {
-    //     primary_state = PS::Ready {
-    //         referee_in_standby: false,
-    //         whistle_in_playing: true,
-    //     };
-    //     whistle_timer.whistle_timer = Some(Instant::now());
-    // }
 
     primary_state = match game_controller_message {
         Some(message) => match message.state {
@@ -276,27 +268,19 @@ pub fn next_primary_state(
         )
     {
         whistle_timer.whistle_timer = Some(Instant::now());
-        // info!("starting whistle");
     }
 
     // if we change from whistle_in_playing:true turn off timer
     if previous_primary_state != primary_state && matches!(previous_primary_state, PS::Ready { .. })
     {
         whistle_timer.whistle_timer = None;
-        // info!("stopped whiste (switched state)")
     }
 
-    // check if a timer was set
+    // reset timer and state incase the whistle was false
     if let Some(start_time) = whistle_timer.whistle_timer {
-        // if it lasted over GOAL_DELAY it should be reset
-        // either it was a false positive, or it was okay and should also be reset
         if start_time.elapsed().as_secs() > GOAL_DELAY {
             whistle_timer.whistle_timer = None;
-            // info!(
-            //     "stopped whistle (GOAL DELAY). {:?}",
-            //     start_time.elapsed().as_secs()
-            // );
-            // if it still has whistle_in_playing:true after the GOAL_DELAY, change to false
+
             if matches!(
                 primary_state,
                 PS::Ready {
@@ -309,10 +293,6 @@ pub fn next_primary_state(
                 }
             }
         }
-    }
-
-    if previous_primary_state != primary_state {
-        // println!("primary state is set to: {primary_state:?}");
     }
 
     if penalty_state.is_penalized() {
