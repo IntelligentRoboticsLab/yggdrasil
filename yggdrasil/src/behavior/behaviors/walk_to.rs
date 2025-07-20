@@ -1,4 +1,4 @@
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use bevy::prelude::*;
 use nalgebra::Point3;
@@ -10,10 +10,8 @@ use crate::{
         step_planner::{StepPlanner, Target},
         walking_engine::step_context::StepContext,
     },
-    nao::{HeadMotionManager, NaoManager, Priority},
+    nao::{HeadMotionManager, LookAt},
 };
-
-const HEAD_ROTATION_TIME: Duration = Duration::from_millis(500);
 
 pub struct WalkToBehaviorPlugin;
 
@@ -53,19 +51,15 @@ fn walk_to(
     pose: Res<RobotPose>,
     mut step_planner: ResMut<StepPlanner>,
     mut step_context: ResMut<StepContext>,
-    mut nao_manager: ResMut<NaoManager>,
     mut head_motion_manager: ResMut<HeadMotionManager>,
 ) {
     let target_point = Point3::new(walk_to.target.position.x, walk_to.target.position.y, 0.0);
 
     if walk_to.look_mode == LookMode::AtTarget {
-        let look_at = pose.get_look_at_absolute(&target_point);
-        nao_manager.set_head_target(
-            look_at,
-            HEAD_ROTATION_TIME,
-            Priority::default(),
-            NaoManager::HEAD_STIFFNESS,
-        );
+        head_motion_manager.request_look_at(LookAt {
+            pose: *pose,
+            point: target_point,
+        });
     } else if walk_to.look_mode == LookMode::Observe {
         head_motion_manager.request_look_around();
     }
