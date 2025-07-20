@@ -222,7 +222,8 @@ pub fn next_primary_state(
     let recognized_ready_pose = matches!(
         primary_state,
         PS::Ready {
-            referee_in_standby: true
+            referee_in_standby: true,
+            whistle_in_playing: false,
         }
     ) || recognized_ready_pose;
 
@@ -241,14 +242,20 @@ pub fn next_primary_state(
             GameState::Initial => PS::Initial,
             GameState::Standby if recognized_ready_pose => PS::Ready {
                 referee_in_standby: true,
+                whistle_in_playing: false,
             },
             GameState::Ready => PS::Ready {
                 referee_in_standby: false,
+                whistle_in_playing: false,
             },
             GameState::Set if heard_whistle => PS::Playing {
                 whistle_in_set: true,
             },
             GameState::Set => PS::Set,
+            GameState::Playing if heard_whistle => PS::Ready {
+                referee_in_standby: false,
+                whistle_in_playing: true,
+            },
             GameState::Playing => PS::Playing {
                 whistle_in_set: false,
             },
