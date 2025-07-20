@@ -1,5 +1,5 @@
 # The base amount of time (in milliseconds) for one step.
-base_step_duration = 240
+base_step_duration = 220
 
 # Duration modifiers (in seconds) for a single step.
 # Modifies `base_step_duration` by adding (modifier * movement factor) seconds per step.
@@ -65,7 +65,7 @@ stopping_foot_lift = 0.01
 #
 # E.g. the difference between the current and the last step is clamped to
 # -max_acceleration and max_acceleration.
-max_acceleration = { forward = 0.01, left = 0.05, turn = 0.3 }
+max_acceleration = { forward = 0.03, left = 0.07, turn = 0.7 }
 
 # The step size is clipped to this value; in both directions (e.g. range for forward is -max_step_size to max_step_size).
 max_step_size = { forward = 0.06, left = 0.06, turn = 0.7 }

@@ -56,7 +56,7 @@ impl Plugin for RlStrikerSearchBehaviorPlugin {
 pub struct RlStrikerSearchBehaviorConfig {
     // The output of the policy is element wise multiplied with this value to determine the
     // step that is requested to the walking engine.
-    policy_output_scaling: Step,
+    pub policy_output_scaling: Step,
 
     // Controls how fast the robot moves its head back and forth while looking around
     pub head_rotation_speed: f32,

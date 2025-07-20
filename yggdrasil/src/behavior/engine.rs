@@ -8,7 +8,10 @@ use ml::{
 use nalgebra::Point2;
 
 use crate::{
-    behavior::roles::LostBallSearchTimer,
+    behavior::{
+        behaviors::{WalkToRL, WalkToRLBehaviorPlugin},
+        roles::LostBallSearchTimer,
+    },
     core::config::showtime::PlayerConfig,
     motion::walking_engine::Gait,
     nao::{NaoManager, Priority, RobotInfo},
@@ -60,6 +63,7 @@ impl Plugin for BehaviorEnginePlugin {
                 WalkToBallBehaviorPlugin,
                 WalkToBehaviorPlugin,
                 WalkToSetBehaviorPlugin,
+                WalkToRLBehaviorPlugin,
                 LostBallSearchBehaviorPlugin,
             ))
             .add_systems(PostUpdate, role_base);
@@ -130,6 +134,7 @@ pub enum BehaviorState {
     WalkToBall,
     RlStrikerSearchBehavior,
     LostBallSearch,
+    WalkToRL,
 }
 
 #[must_use]
@@ -196,12 +201,12 @@ impl RoleState {
         defender_switch_timer: Option<ResMut<DefenderSwitchTimer>>,
         time: Res<Time>,
     ) {
-        if let Some(distance) = possible_ball_distance {
-            if distance < 3.0 {
-                commands.set_role(Striker);
-                return;
-            }
-        }
+        // if let Some(distance) = possible_ball_distance {
+        //     if distance < 3.0 {
+        //         commands.set_role(Striker);
+        //         return;
+        //     }
+        // }
 
         // check if the current role is striker
         if *role_state == RoleState::Striker && (player_number != 4 && player_number != 5) {

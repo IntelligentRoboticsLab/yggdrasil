@@ -11,6 +11,7 @@ mod visual_referee;
 mod walk;
 mod walk_to;
 mod walk_to_ball;
+mod walk_to_rl;
 mod walk_to_set;
 
 pub use catchfall::*;
@@ -26,4 +27,5 @@ pub use visual_referee::*;
 pub use walk::*;
 pub use walk_to::*;
 pub use walk_to_ball::*;
+pub use walk_to_rl::*;
 pub use walk_to_set::*;
