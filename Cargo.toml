@@ -90,7 +90,7 @@ local-ip-address = "0.6.2"
 lstsq = "0.6.0"
 miette = "7.6.0"
 mimalloc = "0.1.45"
-nalgebra = { version = "0.33.2", features = ["convert-glam028"] }
+nalgebra = { version = "0.33.2", features = ["convert-glam029"] }
 ndarray = "0.16.1"
 num = "0.4.3"
 openvino = { git = "https://github.com/intel/openvino-rs", rev = "2f6b500", features = [
@@ -107,8 +107,8 @@ proc-macro2 = "1.0.95"
 quote = "1.0.40"
 rand = "0.9.1"
 
-re_crash_handler = "0.23.1"
-rerun = { version = "0.23.1", default-features = false, features = [
+re_crash_handler = "0.24.0"
+rerun = { version = "0.24.0", default-features = false, features = [
   "sdk",
   "server",
   "analytics",
