@@ -6,7 +6,10 @@ use nalgebra::UnitComplex;
 use nidhogg::types::{FillExt, HeadJoints};
 
 use crate::{
-    behavior::engine::{Behavior, BehaviorState, in_behavior},
+    behavior::{
+        BehaviorConfig,
+        engine::{Behavior, BehaviorState, in_behavior},
+    },
     core::config::{layout::LayoutConfig, showtime::PlayerConfig},
     localization::RobotPose,
     motion::{
