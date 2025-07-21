@@ -1,15 +1,7 @@
 use std::time::Instant;
 
-use bevy::prelude::*;
-use bifrost::communication::GameControllerMessage;
-use nalgebra::UnitComplex;
-use nidhogg::types::{FillExt, HeadJoints};
-
 use crate::{
-    behavior::{
-        BehaviorConfig,
-        engine::{Behavior, BehaviorState, in_behavior},
-    },
+    behavior::engine::{Behavior, BehaviorState, in_behavior},
     core::config::{layout::LayoutConfig, showtime::PlayerConfig},
     localization::RobotPose,
     motion::{
@@ -18,6 +10,9 @@ use crate::{
     },
     nao::HeadMotionManager,
 };
+use bevy::prelude::*;
+use bifrost::communication::GameControllerMessage;
+use nalgebra::UnitComplex;
 
 #[derive(Resource, Deref)]
 struct ObserveStartingTime(Instant);
@@ -58,7 +53,6 @@ fn walk_to_set(
     mut step_planner: ResMut<StepPlanner>,
     mut step_context: ResMut<StepContext>,
     mut head_motion_manager: ResMut<HeadMotionManager>,
-    config: Res<BehaviorConfig>,
     gamecontrollermessage: Res<GameControllerMessage>,
 ) {
     let set_robot_position = layout_config
