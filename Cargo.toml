@@ -108,7 +108,7 @@ quote = "1.0.40"
 rand = "0.9.1"
 
 re_crash_handler = "0.23.1"
-rerun = { version = "0.23.1", default-features = false, features = [
+rerun = { version = "0.23.4", default-features = false, features = [
   "sdk",
   "server",
   "analytics",
@@ -124,7 +124,7 @@ socket2 = "0.5.9"
 strum = { version = "0.27", features = ["derive"] }
 syn = "2.0.100"
 thiserror = "2.0.12"
-tokio = "1.46.1"
+tokio = "1.47.1"
 toml = "0.8.19"
 tracing = "0.1.40"
 tracing-appender = "0.2.3"
