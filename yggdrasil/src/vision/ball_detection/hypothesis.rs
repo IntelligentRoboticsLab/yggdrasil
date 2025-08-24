@@ -305,7 +305,11 @@ impl BallHypothesis {
                 BallFilter::Moving { filter: second, .. },
             ) => {
                 first
-                    .update(second.state, Matrix4::identity(), second.covariance())
+                    .update(
+                        second.state().position.coords,
+                        Matrix2x4::identity(),
+                        second.covariance().fixed_view::<2, 2>(0, 0).into_owned(),
+                    )
                     .expect("Failed to update moving ball filter");
             }
             // no merge
