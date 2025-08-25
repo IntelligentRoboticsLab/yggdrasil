@@ -156,7 +156,7 @@ impl MovingBallKf {
             0.0, 0.0, rot_mat.m21, rot_mat.m22;
         ];
 
-        let state_transition_model = constant_velocity_prediction * state_rotation;
+        let state_transition_model = state_rotation * constant_velocity_prediction;
 
         self.0.predict(
             state_transition_model,
