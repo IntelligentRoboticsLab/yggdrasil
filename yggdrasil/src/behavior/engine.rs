@@ -13,7 +13,7 @@ use crate::{
     motion::walking_engine::Gait,
     nao::{NaoManager, Priority, RobotInfo},
     sensor::{button::HeadButtons, falling::FallState, imu::IMUValues},
-    vision::ball_detection::ball_tracker::BallTracker,
+    vision::ball_detection::hypothesis::Ball,
 };
 
 use super::{
@@ -259,7 +259,7 @@ pub fn role_base(
     player_config: Res<PlayerConfig>,
     game_controller_message: Option<Res<GameControllerMessage>>,
     imu_values: Res<IMUValues>,
-    ball_tracker: Res<BallTracker>,
+    ball: Res<Ball>,
     role_state: Res<State<RoleState>>,
     defender_switch_timer: Option<ResMut<DefenderSwitchTimer>>,
     time: Res<Time>,
@@ -350,9 +350,7 @@ pub fn role_base(
             target: Point2::default(),
         }),
         PrimaryState::Playing { .. } => {
-            let possible_ball_distance = ball_tracker
-                .stationary_ball()
-                .map(|ball| ball.coords.norm());
+            let possible_ball_distance = ball.position().map(|ball| ball.coords.norm());
 
             RoleState::assign_role(
                 &mut commands,

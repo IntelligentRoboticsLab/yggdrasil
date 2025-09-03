@@ -1,14 +1,11 @@
 //! Module for detecting balls in the top and bottom images.
 
-pub mod ball_tracker;
 pub mod classifier;
 pub mod hypothesis;
 pub mod proposal;
 
 use std::time::Duration;
 
-pub use ball_tracker::BallHypothesis;
-use ball_tracker::BallTracker;
 use bevy::prelude::*;
 use heimdall::{Bottom, Top};
 use nidhogg::types::{FillExt, LeftEye, color};
@@ -20,6 +17,7 @@ use serde_with::{DurationMilliSeconds, serde_as};
 use crate::{
     nao::{NaoManager, Priority},
     prelude::*,
+    vision::ball_detection::hypothesis::Ball,
 };
 
 use self::classifier::BallClassifierConfig;
@@ -36,17 +34,8 @@ impl Plugin for BallDetectionPlugin {
             classifier::BallClassifierPlugin,
             hypothesis::BallHypothesisPlugin,
         ))
-        .add_systems(
-            PostStartup,
-            (
-                init_subconfigs,
-                // setup_ball_debug_logging::<Top>,
-                // setup_ball_debug_logging::<Bottom>,
-                // setup_3d_ball_debug_logging,
-            ),
-        )
+        .add_systems(PostStartup, (init_subconfigs,))
         .add_systems(Update, detected_ball_eye_color);
-        // .add_systems(PostUpdate, log_3d_balls);
     }
 }
 
@@ -70,15 +59,20 @@ fn init_subconfigs(mut commands: Commands, config: Res<BallDetectionConfig>) {
 
 fn detected_ball_eye_color(
     mut nao: ResMut<NaoManager>,
-    ball_tracker: Res<BallTracker>,
+    ball: Res<Ball>,
     config: Res<BallDetectionConfig>,
 ) {
-    let Some(_) = ball_tracker.stationary_ball() else {
+    if !ball.is_reliable() {
         nao.set_left_eye_led(LeftEye::fill(color::f32::EMPTY), Priority::default());
         return;
-    };
+    }
 
-    if ball_tracker.timestamp.elapsed() >= config.max_classification_age_eye_color {
+    if ball
+        .last_update
+        .expect("No last update on reliable ball")
+        .elapsed()
+        >= config.max_classification_age_eye_color
+    {
         nao.set_left_eye_led(
             LeftEye::fill(color::Rgb::new(1.0, 1.0, 0.0)),
             Priority::default(),

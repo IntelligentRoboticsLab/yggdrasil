@@ -10,7 +10,7 @@ use futures::channel::mpsc::{self};
 
 use crate::{
     core::config::showtime::PlayerConfig, localization::RobotPose, sensor::falling::FallState,
-    vision::ball_detection::ball_tracker::BallTracker,
+    vision::ball_detection::hypothesis::Ball,
 };
 
 use super::{GameControllerConfig, GameControllerConnection, GameControllerSocket};
@@ -58,7 +58,7 @@ pub fn send_message(
     player_config: Res<PlayerConfig>,
     fall_state: Res<FallState>,
     robot_pose: Res<RobotPose>,
-    ball_tracker: Res<BallTracker>,
+    ball: Res<Ball>,
     (sender, connection, config): (
         Res<GameControllerSender>,
         Res<GameControllerConnection>,
@@ -73,7 +73,7 @@ pub fn send_message(
         return;
     }
 
-    let (ball_age, ball_pos) = balls_to_game_controller_ball(&ball_tracker);
+    let (ball_age, ball_pos) = balls_to_game_controller_ball(&ball);
     let return_message = GameControllerReturnMessage::new(
         player_config.player_number,
         player_config.team_number,
@@ -102,16 +102,19 @@ fn robot_pose_to_game_controller_pose(robot_pose: &RobotPose) -> [f32; 3] {
     ]
 }
 
-fn balls_to_game_controller_ball(ball_tracker: &BallTracker) -> (f32, [f32; 2]) {
-    let Some(ball) = ball_tracker.stationary_ball() else {
+fn balls_to_game_controller_ball(ball: &Ball) -> (f32, [f32; 2]) {
+    let Some(ball_position) = ball.position() else {
         return NO_BALL_DETECTED_DATA;
     };
 
     (
-        ball_tracker.timestamp.elapsed().as_secs_f32(),
+        ball.last_update
+            .expect("No last update on reliable ball")
+            .elapsed()
+            .as_secs_f32(),
         [
-            ball.x * MILLIMETERS_PER_METER,
-            ball.y * MILLIMETERS_PER_METER,
+            ball_position.x * MILLIMETERS_PER_METER,
+            ball_position.y * MILLIMETERS_PER_METER,
         ],
     )
 }

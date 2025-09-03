@@ -19,7 +19,7 @@ use crate::{
     localization::RobotPose,
     motion::{step_planner::Target, walking_engine::step::Step},
     nao::{NaoManager, Priority},
-    vision::ball_detection::ball_tracker::BallTracker,
+    vision::ball_detection::hypothesis::Ball,
 };
 
 use std::time::Duration;
@@ -102,12 +102,12 @@ pub fn striker_role(
     mut commands: Commands,
     pose: Res<RobotPose>,
     layout_config: Res<LayoutConfig>,
-    ball_tracker: Res<BallTracker>,
+    ball: Res<Ball>,
     mut nao_manager: ResMut<NaoManager>,
     lost_ball_timer: Option<ResMut<LostBallSearchTimer>>,
     time: Res<Time>,
 ) {
-    let Some(relative_ball) = ball_tracker.stationary_ball() else {
+    let Some(relative_ball) = ball.position() else {
         if let Some(mut timer) = lost_ball_timer {
             timer.timer.tick(time.delta()); // <- tick the timer
 
@@ -132,7 +132,13 @@ pub fn striker_role(
     let absolute_ball: nalgebra::OPoint<f32, nalgebra::Const<2>> =
         pose.robot_to_world(&relative_ball);
 
-    if ball_tracker.timestamp.elapsed().as_secs_f32() > 0.5 {
+    if ball
+        .last_update
+        .expect("No last update on reliable ball")
+        .elapsed()
+        .as_secs_f32()
+        > 0.5
+    {
         if lost_ball_timer.is_none() {
             commands.insert_resource(LostBallSearchTimer::new(
                 Duration::from_secs(9),
@@ -210,12 +216,12 @@ pub fn striker_role(
 //TODO: Make this a separate stand-alone behavior
 fn set_play(
     mut commands: Commands,
-    ball_tracker: Res<BallTracker>,
+    ball: Res<Ball>,
     pose: Res<RobotPose>,
     behavior_state: Res<State<BehaviorState>>,
     walk: Option<Res<Walk>>,
 ) {
-    let Some(relative_ball) = ball_tracker.stationary_ball() else {
+    let Some(relative_ball) = ball.position() else {
         return;
     };
     let absolute_ball = pose.robot_to_world(&relative_ball);

@@ -3,17 +3,14 @@ use std::{
     time::{Duration, Instant},
 };
 
-use rerun::{
-    AsComponents, Rotation3D,
-    components::{RotationAxisAngle, RotationQuat},
-};
+use rerun::{AsComponents, Rotation3D, components::RotationAxisAngle};
 
 use bevy::prelude::*;
 
 use filter::{CovarianceMatrix, KalmanFilter};
 use nalgebra::{
-    Matrix2, Matrix2x4, Matrix4, Matrix4x2, Point2, Rotation3, Unit, UnitVector3, Vector2, Vector3,
-    Vector4, matrix, vector,
+    Matrix2, Matrix2x4, Matrix4, Point2, Rotation3, UnitVector3, Vector2, Vector3, Vector4, matrix,
+    vector,
 };
 use rerun::external::arrow;
 
@@ -330,9 +327,25 @@ fn merge_balls(mut commands: Commands, mut hypotheses: Query<(Entity, &mut BallH
 #[derive(Clone, Copy, Debug, Default, Resource)]
 pub struct Ball {
     pub cycle: Cycle,
-    pub covariance: Matrix2<f32>,
-    pub position: Point2<f32>,
-    pub velocity: Option<Vector2<f32>>,
+    pub last_update: Option<Instant>,
+    covariance: Matrix2<f32>,
+    position: Point2<f32>,
+    velocity: Option<Vector2<f32>>,
+}
+
+impl Ball {
+    #[must_use]
+    pub fn is_reliable(&self) -> bool {
+        const DESPAWN_TIME: Duration = Duration::from_secs(5);
+
+        self.last_update
+            .is_some_and(|last_update| last_update.elapsed() < DESPAWN_TIME)
+    }
+
+    #[must_use]
+    pub fn position(&self) -> Option<Point2<f32>> {
+        self.is_reliable().then_some(self.position)
+    }
 }
 
 fn set_best_ball(hypotheses: Query<&BallHypothesis>, mut ball: ResMut<Ball>) {
@@ -342,6 +355,7 @@ fn set_best_ball(hypotheses: Query<&BallHypothesis>, mut ball: ResMut<Ball>) {
 
     if let Some(best_ball) = best_ball {
         ball.cycle = best_ball.last_cycle;
+        ball.last_update = Some(best_ball.last_update);
         ball.position = best_ball.position();
         ball.velocity = best_ball
             .is_moving()
