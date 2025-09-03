@@ -17,8 +17,12 @@ use rerun::external::arrow;
 use crate::{
     core::debug::DebugContext,
     localization::{RobotPose, odometry::Odometry},
-    nao::Cycle,
+    nao::{CYCLES_PER_SECOND, Cycle},
 };
+
+// for logging ball rotation
+const BALL_RADIUS: f32 = 0.05; // 5 cm
+const FREQ: f32 = 1.0 / CYCLES_PER_SECOND; // 82 Hz
 
 const MAX_CONCURRENT_HYPOTHESES: usize = 12;
 const INITIAL_NLL_OF_MEASUREMENTS: f32 = 0.0;
@@ -428,6 +432,10 @@ fn log_3d_balls(
     let pos = robot_pose.robot_to_world(&ball.position);
 
     let (velocity_vector, velocity_magnitude) = if let Some(velocity_vector) = ball.velocity {
+        // rotate the velocity vector back to world frame
+        let rotation = robot_pose.inner.rotation;
+        let velocity_vector = rotation.inverse() * velocity_vector;
+
         let velocity_magnitude = velocity_vector.norm();
         (velocity_vector, velocity_magnitude)
     } else {
@@ -435,12 +443,11 @@ fn log_3d_balls(
     };
 
     // add a little rotation in the direction of velocity angle rotated by robot orientation
-    let ball_radius = 0.05; // 5 cm
-    let dt = 1.0 / 82.0; // 82 Hz
+
     // rotate around normal
     let delta_rotation = Rotation3::from_axis_angle(
         &UnitVector3::new_normalize(Vector3::new(velocity_vector.x, velocity_vector.y, 0.0)),
-        velocity_magnitude * dt / ball_radius,
+        velocity_magnitude * FREQ / BALL_RADIUS,
     );
 
     // update current rotation so that the new rotation is added to it
@@ -462,22 +469,23 @@ fn log_3d_balls(
     } else {
         let max_variance = ball.covariance.diagonal().max();
         let max_std = max_variance.sqrt();
-
-        let (axis, angle) = rotation.axis_angle().unwrap();
+        let (axis, angle) = rotation.axis_angle().expect("Failed to get axis-angle");
 
         dbg.log_with_cycle(
             "balls/best",
             *cycle,
             &[
+                // ball position
                 rerun::Transform3D::from_translation((pos.coords.x, pos.coords.y, 0.05))
+                    .as_serialized_batches(),
+                // velocity arrow
+                rerun::Arrows3D::from_vectors([(velocity_vector.y, -velocity_vector.x, 0.0)])
                     .as_serialized_batches(),
                 rerun::SerializedComponentBatch::new(
                     Arc::new(arrow::array::Float32Array::from_value(max_std, 1)),
                     rerun::ComponentDescriptor::new("yggdrasil.components.MaxStd"),
                 )
                 .as_serialized_batches(),
-                rerun::Arrows3D::from_vectors([(velocity_vector.y, -velocity_vector.x, 0.0)])
-                    .as_serialized_batches(),
                 rerun::SerializedComponentBatch::new(
                     Arc::new(arrow::array::UInt64Array::from_value(
                         ball.cycle.0 as u64,
@@ -491,6 +499,7 @@ fn log_3d_balls(
         dbg.log_with_cycle(
             "balls/best/mesh",
             *cycle,
+            // ball rotation is performed separately so that it doesn't affect the velocity arrow
             &rerun::Transform3D::from_rotation(Rotation3D::AxisAngle(RotationAxisAngle::new(
                 (axis.x, axis.y, axis.z),
                 angle,
