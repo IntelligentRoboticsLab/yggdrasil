@@ -60,13 +60,18 @@ impl MovingBallKf {
             initial_covariance,
         ))
     }
-}
 
-impl MovingBallKf {
+    #[must_use]
+    pub fn is_moving(&self) -> bool {
+        const EPSILON: f32 = 0.01;
+        self.0.state().velocity.norm() > EPSILON
+    }
+
     pub fn predict(
         &mut self,
         odometry: &Odometry,
-        velocity_decay: f32,
+        linear_velocity_decay: f32,
+        exponential_velocity_decay: f32,
         dt: Duration,
         process_noise: CovarianceMatrix<4>,
     ) {
@@ -74,13 +79,23 @@ impl MovingBallKf {
         let constant_velocity_prediction = matrix![
             1.0, 0.0, dt, 0.0;
             0.0, 1.0, 0.0, dt;
-            0.0, 0.0, velocity_decay, 0.0;
-            0.0, 0.0, 0.0, velocity_decay;
+            0.0, 0.0, exponential_velocity_decay, 0.0;
+            0.0, 0.0, 0.0, exponential_velocity_decay;
         ];
 
         let inverse_odometry = odometry.offset_to_last.inverse();
 
         let translation = inverse_odometry.translation;
+
+        // apply linear velocity decay
+        let linear_decay = if self.is_moving() {
+            -self.state().velocity.normalize() * dt * linear_velocity_decay
+        } else {
+            Vector2::zeros()
+        };
+
+        let control_vector = vector![translation.x, translation.y, linear_decay.x, linear_decay.y];
+
         let rotation = inverse_odometry.rotation.to_rotation_matrix();
         let rot_mat = rotation.matrix();
 
@@ -95,8 +110,8 @@ impl MovingBallKf {
 
         self.0.predict(
             state_transition_model,
-            Matrix4x2::identity(),
-            translation.vector,
+            Matrix4::identity(),
+            control_vector,
             process_noise,
         );
     }
@@ -139,8 +154,7 @@ pub struct BallHypothesis {
 impl BallHypothesis {
     #[must_use]
     pub fn is_moving(&self) -> bool {
-        const EPSILON: f32 = 0.01;
-        self.filter.state().velocity.norm() > EPSILON
+        self.filter.is_moving()
     }
 
     #[must_use]
@@ -152,14 +166,20 @@ impl BallHypothesis {
         &mut self,
         odometry: &Odometry,
         moving_process_noise: Matrix4<f32>,
-        velocity_decay: f32,
+        linear_velocity_decay: f32,
+        exponential_velocity_decay: f32,
         dt: Duration,
     ) {
         // TODO: config values
         const MIN_SPEED: f32 = 0.05; // m/s
 
-        self.filter
-            .predict(odometry, velocity_decay, dt, moving_process_noise);
+        self.filter.predict(
+            odometry,
+            linear_velocity_decay,
+            exponential_velocity_decay,
+            dt,
+            moving_process_noise,
+        );
 
         let pos = self.filter.state().position;
         let cov_2d = self
@@ -209,11 +229,20 @@ impl BallHypothesis {
 
 fn predict(mut hypotheses: Query<&mut BallHypothesis>, odometry: Res<Odometry>, time: Res<Time>) {
     for mut hypothesis in &mut hypotheses {
-        const VELOCITY_DECAY: f32 = 0.998; // TODO: config value
+        // TODO: config values
+        const LINEAR_VELOCITY_DECAY: f32 = 0.1; // per second
+        const EXPONENTIAL_VELOCITY_DECAY: f32 = 0.998; // per second
+        let moving_process_noise = Matrix4::from_diagonal(&Vector4::new(0.005, 0.005, 0.02, 0.02));
 
         let dt = time.delta();
 
-        hypothesis.predict(&odometry, Matrix4::identity(), VELOCITY_DECAY, dt);
+        hypothesis.predict(
+            &odometry,
+            moving_process_noise,
+            LINEAR_VELOCITY_DECAY,
+            EXPONENTIAL_VELOCITY_DECAY,
+            dt,
+        );
     }
 }
 
@@ -239,7 +268,7 @@ fn measurement_update(
                 hypothesis.last_update = Instant::now();
 
                 // TODO: config values
-                let measurement_noise = Matrix2::identity();
+                let measurement_noise = Matrix2::from_diagonal(&Vector2::new(0.1, 0.1));
 
                 // TODO: use ball distance in noise calculation
                 hypothesis
@@ -273,6 +302,7 @@ fn measurement_update(
     }
 }
 
+/// Merges ball hypotheses that are of the same type (stationary/moving) and close to each other
 fn merge_balls(mut commands: Commands, mut hypotheses: Query<(Entity, &mut BallHypothesis)>) {
     let mut skip = vec![];
     let mut combinations = hypotheses.iter_combinations_mut();
@@ -313,7 +343,6 @@ fn set_best_ball(hypotheses: Query<&BallHypothesis>, mut ball: ResMut<Ball>) {
     if let Some(best_ball) = best_ball {
         ball.cycle = best_ball.last_cycle;
         ball.position = best_ball.position();
-
         ball.velocity = best_ball
             .is_moving()
             .then(|| best_ball.filter.state().velocity);
@@ -329,7 +358,6 @@ fn clean_old_hypotheses(mut commands: Commands, hypotheses: Query<(Entity, &Ball
     const DESPAWN_TIME: Duration = Duration::from_secs(5);
 
     for (entity, hypothesis) in &hypotheses {
-        // todo dont do time
         if hypothesis.last_update.elapsed() > DESPAWN_TIME {
             commands.entity(entity).despawn();
         }
