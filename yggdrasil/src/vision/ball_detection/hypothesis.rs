@@ -452,9 +452,9 @@ fn log_3d_balls(
     let pos = robot_pose.robot_to_world(&ball.position);
 
     let (velocity_vector, velocity_magnitude) = if let Some(velocity_vector) = ball.velocity {
-        // rotate the velocity vector back to world frame
+        // rotate the velocity vector to world frame
         let rotation = robot_pose.inner.rotation;
-        let velocity_vector = rotation.inverse() * velocity_vector;
+        let velocity_vector = rotation * velocity_vector;
 
         let velocity_magnitude = velocity_vector.norm();
         (velocity_vector, velocity_magnitude)
@@ -465,18 +465,17 @@ fn log_3d_balls(
     // rotate around normal
     let delta_rotation = Rotation3::from_axis_angle(
         &UnitVector3::new_normalize(Vector3::new(velocity_vector.y, -velocity_vector.x, 0.0)),
-        velocity_magnitude * FREQ / BALL_RADIUS,
+        -velocity_magnitude * FREQ / BALL_RADIUS,
     );
 
     // update current rotation so that the new rotation is added to it
     *current_rotation = delta_rotation * *current_rotation;
 
-    let rotation = *current_rotation
-        * Rotation3::from_axis_angle(&Vector3::z_axis(), robot_pose.world_rotation());
-
     let max_variance = ball.covariance.diagonal().max();
     let max_std = max_variance.sqrt();
-    let (axis, angle) = rotation.axis_angle().expect("Failed to get axis-angle");
+    let (axis, angle) = current_rotation
+        .axis_angle()
+        .unwrap_or((Vector3::z_axis(), 0.0));
 
     dbg.log_with_cycle(
         "balls/best",
@@ -486,7 +485,7 @@ fn log_3d_balls(
             rerun::Transform3D::from_translation((pos.coords.x, pos.coords.y, 0.05))
                 .as_serialized_batches(),
             // velocity arrow
-            rerun::Arrows3D::from_vectors([(-velocity_vector.x, -velocity_vector.y, 0.0)])
+            rerun::Arrows3D::from_vectors([(velocity_vector.x, velocity_vector.y, 0.0)])
                 .as_serialized_batches(),
             rerun::SerializedComponentBatch::new(
                 Arc::new(arrow::array::Float32Array::from_value(max_std, 1)),

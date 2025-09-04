@@ -87,7 +87,7 @@ linear_velocity_decay = 0.1
 exponential_velocity_decay = 0.002
 
 # Maximum distance to associate a measurement to a hypothesis
-max_association_distance = 1.0
+max_association_distance = 2.0
 
 # Process noise for moving ball model
 moving_process_noise = [0.005, 0.005, 0.05, 0.05]
