@@ -350,7 +350,7 @@ pub fn role_base(
             target: Point2::default(),
         }),
         PrimaryState::Playing { .. } => {
-            let possible_ball_distance = ball.position().map(|ball| ball.coords.norm());
+            let possible_ball_distance = ball.as_option().map(|b| b.position.coords.norm());
 
             RoleState::assign_role(
                 &mut commands,

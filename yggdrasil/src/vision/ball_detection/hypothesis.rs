@@ -42,7 +42,7 @@ impl Plugin for BallHypothesisPlugin {
                     merge_balls,
                     clean_old_hypotheses,
                     normalize_measurement_nll,
-                    set_best_ball,
+                    update_reliable_ball,
                 )
                     .chain(),
             )
@@ -328,48 +328,54 @@ fn merge_balls(mut commands: Commands, mut hypotheses: Query<(Entity, &mut BallH
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, Resource)]
-pub struct Ball {
-    pub cycle: Cycle,
-    pub last_update: Option<Instant>,
+#[derive(Clone, Debug)]
+pub struct BallState {
+    pub last_cycle: Cycle,
+    pub last_update: Instant,
     covariance: Matrix2<f32>,
-    position: Point2<f32>,
-    velocity: Option<Vector2<f32>>,
+    pub position: Point2<f32>,
+    pub velocity: Option<Vector2<f32>>,
+}
+
+#[derive(Clone, Debug, Default, Resource)]
+pub enum Ball {
+    Some(BallState),
+    #[default]
+    None,
 }
 
 impl Ball {
     #[must_use]
-    pub fn is_reliable(&self) -> bool {
-        const DESPAWN_TIME: Duration = Duration::from_secs(5);
-
-        self.last_update
-            .is_some_and(|last_update| last_update.elapsed() < DESPAWN_TIME)
-    }
-
-    #[must_use]
-    pub fn position(&self) -> Option<Point2<f32>> {
-        self.is_reliable().then_some(self.position)
+    pub fn as_option(&self) -> Option<&BallState> {
+        match self {
+            Ball::Some(ball_state) => Some(ball_state),
+            Ball::None => None,
+        }
     }
 }
 
-fn set_best_ball(hypotheses: Query<&BallHypothesis>, mut ball: ResMut<Ball>) {
-    let best_ball = hypotheses
+fn update_reliable_ball(hypotheses: Query<&BallHypothesis>, mut ball: ResMut<Ball>) {
+    let Some(reliable_ball) = hypotheses
         .iter()
-        .min_by(|a, b| a.nll_of_measurements.total_cmp(&b.nll_of_measurements));
+        .min_by(|a, b| a.nll_of_measurements.total_cmp(&b.nll_of_measurements))
+    else {
+        *ball = Ball::None;
+        return;
+    };
 
-    if let Some(best_ball) = best_ball {
-        ball.cycle = best_ball.last_cycle;
-        ball.last_update = Some(best_ball.last_update);
-        ball.position = best_ball.position();
-        ball.velocity = best_ball
-            .is_moving()
-            .then(|| best_ball.filter.state().velocity);
-        ball.covariance = best_ball
+    *ball = Ball::Some(BallState {
+        last_cycle: reliable_ball.last_cycle,
+        last_update: reliable_ball.last_update,
+        covariance: reliable_ball
             .filter
-            .covariance
+            .covariance()
             .fixed_view::<2, 2>(0, 0)
-            .into_owned();
-    }
+            .into_owned(),
+        position: reliable_ball.position(),
+        velocity: reliable_ball
+            .is_moving()
+            .then(|| reliable_ball.filter.state().velocity),
+    });
 }
 
 fn clean_old_hypotheses(mut commands: Commands, hypotheses: Query<(Entity, &BallHypothesis)>) {
@@ -425,10 +431,22 @@ fn log_3d_balls(
     ball: Res<Ball>,
     cycle: Res<Cycle>,
     robot_pose: Res<RobotPose>,
-    hypotheses: Query<&BallHypothesis>,
     // local ball rotation
     mut current_rotation: Local<Rotation3<f32>>,
 ) {
+    let Ball::Some(ref ball) = *ball else {
+        dbg.log(
+            "balls/best",
+            &[
+                rerun::Transform3D::from_scale((0., 0., 0.)).as_serialized_batches(),
+                rerun::Arrows3D::update_fields()
+                    .with_colors([(255, 0, 0)])
+                    .as_serialized_batches(),
+            ],
+        );
+        return;
+    };
+
     let pos = robot_pose.robot_to_world(&ball.position);
 
     let (velocity_vector, velocity_magnitude) = if let Some(velocity_vector) = ball.velocity {
@@ -456,57 +474,45 @@ fn log_3d_balls(
     let rotation = *current_rotation
         * Rotation3::from_axis_angle(&Vector3::z_axis(), robot_pose.world_rotation());
 
-    if hypotheses.is_empty() {
-        dbg.log(
-            "balls/best",
-            &[
-                rerun::Transform3D::from_scale((0., 0., 0.)).as_serialized_batches(),
-                rerun::Arrows3D::update_fields()
-                    .with_colors([(255, 0, 0)])
-                    .as_serialized_batches(),
-            ],
-        );
-    } else {
-        let max_variance = ball.covariance.diagonal().max();
-        let max_std = max_variance.sqrt();
-        let (axis, angle) = rotation.axis_angle().expect("Failed to get axis-angle");
+    let max_variance = ball.covariance.diagonal().max();
+    let max_std = max_variance.sqrt();
+    let (axis, angle) = rotation.axis_angle().expect("Failed to get axis-angle");
 
-        dbg.log_with_cycle(
-            "balls/best",
-            *cycle,
-            &[
-                // ball position
-                rerun::Transform3D::from_translation((pos.coords.x, pos.coords.y, 0.05))
-                    .as_serialized_batches(),
-                // velocity arrow
-                rerun::Arrows3D::from_vectors([(velocity_vector.y, -velocity_vector.x, 0.0)])
-                    .as_serialized_batches(),
-                rerun::SerializedComponentBatch::new(
-                    Arc::new(arrow::array::Float32Array::from_value(max_std, 1)),
-                    rerun::ComponentDescriptor::new("yggdrasil.components.MaxStd"),
-                )
+    dbg.log_with_cycle(
+        "balls/best",
+        *cycle,
+        &[
+            // ball position
+            rerun::Transform3D::from_translation((pos.coords.x, pos.coords.y, 0.05))
                 .as_serialized_batches(),
-                rerun::SerializedComponentBatch::new(
-                    Arc::new(arrow::array::UInt64Array::from_value(
-                        ball.cycle.0 as u64,
-                        1,
-                    )),
-                    rerun::ComponentDescriptor::new("yggdrasil.components.BallDetectionCycle"),
-                )
+            // velocity arrow
+            rerun::Arrows3D::from_vectors([(velocity_vector.y, -velocity_vector.x, 0.0)])
                 .as_serialized_batches(),
-            ],
-        );
-        dbg.log_with_cycle(
-            "balls/best/mesh",
-            *cycle,
-            // ball rotation is performed separately so that it doesn't affect the velocity arrow
-            &rerun::Transform3D::from_rotation(Rotation3D::AxisAngle(RotationAxisAngle::new(
-                (axis.x, axis.y, axis.z),
-                angle,
-            )))
+            rerun::SerializedComponentBatch::new(
+                Arc::new(arrow::array::Float32Array::from_value(max_std, 1)),
+                rerun::ComponentDescriptor::new("yggdrasil.components.MaxStd"),
+            )
             .as_serialized_batches(),
-        );
-    }
+            rerun::SerializedComponentBatch::new(
+                Arc::new(arrow::array::UInt64Array::from_value(
+                    ball.last_cycle.0 as u64,
+                    1,
+                )),
+                rerun::ComponentDescriptor::new("yggdrasil.components.BallDetectionCycle"),
+            )
+            .as_serialized_batches(),
+        ],
+    );
+    dbg.log_with_cycle(
+        "balls/best/mesh",
+        *cycle,
+        // ball rotation is performed separately so that it doesn't affect the velocity arrow
+        &rerun::Transform3D::from_rotation(Rotation3D::AxisAngle(RotationAxisAngle::new(
+            (axis.x, axis.y, axis.z),
+            angle,
+        )))
+        .as_serialized_batches(),
+    );
 }
 
 /// Returns the unnormalized negative log-likelihood (nll) of a 2D Gaussian at a given position.

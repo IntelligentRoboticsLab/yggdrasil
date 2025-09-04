@@ -19,7 +19,7 @@ use crate::{
     localization::RobotPose,
     motion::{step_planner::Target, walking_engine::step::Step},
     nao::{NaoManager, Priority},
-    vision::ball_detection::hypothesis::Ball,
+    vision::ball_detection::hypothesis::{Ball, BallState},
 };
 
 use std::time::Duration;
@@ -107,7 +107,12 @@ pub fn striker_role(
     lost_ball_timer: Option<ResMut<LostBallSearchTimer>>,
     time: Res<Time>,
 ) {
-    let Some(relative_ball) = ball.position() else {
+    let Ball::Some(BallState {
+        position: relative_ball,
+        last_update,
+        ..
+    }) = ball.as_ref()
+    else {
         if let Some(mut timer) = lost_ball_timer {
             timer.timer.tick(time.delta()); // <- tick the timer
 
@@ -130,19 +135,13 @@ pub fn striker_role(
         return;
     };
     let absolute_ball: nalgebra::OPoint<f32, nalgebra::Const<2>> =
-        pose.robot_to_world(&relative_ball);
+        pose.robot_to_world(relative_ball);
 
-    if ball
-        .last_update
-        .expect("No last update on reliable ball")
-        .elapsed()
-        .as_secs_f32()
-        > 0.5
-    {
+    if last_update.elapsed().as_secs_f32() > 0.5 {
         if lost_ball_timer.is_none() {
             commands.insert_resource(LostBallSearchTimer::new(
                 Duration::from_secs(9),
-                relative_ball,
+                *relative_ball,
             ));
         }
     } else {
@@ -221,10 +220,15 @@ fn set_play(
     behavior_state: Res<State<BehaviorState>>,
     walk: Option<Res<Walk>>,
 ) {
-    let Some(relative_ball) = ball.position() else {
+    let Ball::Some(BallState {
+        position: relative_ball,
+        ..
+    }) = ball.as_ref()
+    else {
         return;
     };
-    let absolute_ball = pose.robot_to_world(&relative_ball);
+
+    let absolute_ball = pose.robot_to_world(relative_ball);
     let ball_distance = relative_ball.coords.norm();
     let ball_target = Point3::new(absolute_ball.x, absolute_ball.y, 0.2);
 

@@ -62,17 +62,12 @@ fn detected_ball_eye_color(
     ball: Res<Ball>,
     config: Res<BallDetectionConfig>,
 ) {
-    if !ball.is_reliable() {
+    let Ball::Some(ref ball) = *ball else {
         nao.set_left_eye_led(LeftEye::fill(color::f32::EMPTY), Priority::default());
         return;
-    }
+    };
 
-    if ball
-        .last_update
-        .expect("No last update on reliable ball")
-        .elapsed()
-        >= config.max_classification_age_eye_color
-    {
+    if ball.last_update.elapsed() >= config.max_classification_age_eye_color {
         nao.set_left_eye_led(
             LeftEye::fill(color::Rgb::new(1.0, 1.0, 0.0)),
             Priority::default(),

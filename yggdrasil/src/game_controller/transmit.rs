@@ -103,18 +103,15 @@ fn robot_pose_to_game_controller_pose(robot_pose: &RobotPose) -> [f32; 3] {
 }
 
 fn balls_to_game_controller_ball(ball: &Ball) -> (f32, [f32; 2]) {
-    let Some(ball_position) = ball.position() else {
+    let Ball::Some(ref ball) = *ball else {
         return NO_BALL_DETECTED_DATA;
     };
 
     (
-        ball.last_update
-            .expect("No last update on reliable ball")
-            .elapsed()
-            .as_secs_f32(),
+        ball.last_update.elapsed().as_secs_f32(),
         [
-            ball_position.x * MILLIMETERS_PER_METER,
-            ball_position.y * MILLIMETERS_PER_METER,
+            ball.position.x * MILLIMETERS_PER_METER,
+            ball.position.y * MILLIMETERS_PER_METER,
         ],
     )
 }

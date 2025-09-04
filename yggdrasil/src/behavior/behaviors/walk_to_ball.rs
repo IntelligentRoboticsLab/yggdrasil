@@ -34,7 +34,10 @@ fn walk_to_ball(
     mut head_motion_manager: ResMut<HeadMotionManager>,
     ball: Res<Ball>,
 ) {
-    let Some(ball) = ball.position().map(|ball| pose.robot_to_world(&ball)) else {
+    let Some(ball) = ball
+        .as_option()
+        .map(|ball| pose.robot_to_world(&ball.position))
+    else {
         return;
     };
 
