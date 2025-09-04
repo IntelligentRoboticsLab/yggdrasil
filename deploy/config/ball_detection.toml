@@ -73,16 +73,27 @@ confidence_threshold = 0.97
 # The amount of time in microseconds we allow the classifier to run, proposals that take longer are discarded.
 time_budget = 1500
 
-# Process noise parameter for position prediction in the Kalman filter
-prediction_noise = 0.0018 # ~3.5 m per second
+[hypothesis]
+# Maximum amount of ball hypotheses tracked at the same time
+max_concurrent_hypotheses = 8
 
-# Measurement noise parameter for the Kalman filter
-measurement_noise = 0.01 # ~10cm per measurement
+# Minimum speed to be considered as still moving
+min_moving_speed = 0.05
 
-# Maximum standard deviation threshold for stationary ball detection in the Kalman filter.
-#
-# Values below this threshold indicate the ball is stationary, while values above indicate movement.
-#
-# Note:
-# Currently we only track stationary balls, not moving ones.
-stationary_std_threshold = 0.75
+# Constant speed loss in m/s
+linear_velocity_decay = 0.1
+
+# Percentual speed loss in m/s
+exponential_velocity_decay = 0.002
+
+# Maximum distance to associate a measurement to a hypothesis
+max_association_distance = 1.0
+
+# Process noise for moving ball model
+moving_process_noise = [0.005, 0.005, 0.05, 0.05]
+
+# Ball position measurement noise
+measurement_noise = [0.1, 0.1]
+
+# Initial covariance for new ball hypotheses
+initial_covariance = [1.0, 1.0, 50.0, 50.0]

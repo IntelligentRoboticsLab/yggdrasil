@@ -3,6 +3,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use ordered_float::Pow;
 use rerun::{AsComponents, Rotation3D, components::RotationAxisAngle};
 
 use bevy::prelude::*;
@@ -13,6 +14,7 @@ use nalgebra::{
     vector,
 };
 use rerun::external::arrow;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     core::debug::DebugContext,
@@ -24,7 +26,27 @@ use crate::{
 const BALL_RADIUS: f32 = 0.05; // 5 cm
 const FREQ: f32 = 1.0 / CYCLES_PER_SECOND; // 82 Hz
 
-const MAX_CONCURRENT_HYPOTHESES: usize = 12;
+#[derive(Debug, Clone, Default, Resource, Serialize, Deserialize)]
+pub struct BallHypothesisConfig {
+    /// Maximum amount of ball hypotheses tracked at the same time
+    pub max_concurrent_hypotheses: usize,
+    /// Minimum speed to be considered as still moving
+    pub min_moving_speed: f32,
+    /// Constant speed loss in m/s
+    pub linear_velocity_decay: f32,
+    /// Percentual speed loss in m/s
+    pub exponential_velocity_decay: f32,
+    /// Maximum distance to associate a measurement to a hypothesis
+    pub max_association_distance: f32,
+    /// Process noise for moving ball model
+    pub moving_process_noise: [f32; 4],
+    /// Ball position measurement noise
+    pub measurement_noise: [f32; 2],
+    /// Initial covariance for new ball hypotheses
+    pub initial_covariance: [f32; 4],
+}
+
+const MAX_CONCURRENT_HYPOTHESES: usize = 8;
 const INITIAL_NLL_OF_MEASUREMENTS: f32 = 0.0;
 const INITIAL_NLL_WEIGHT: f32 = f32::MAX;
 
@@ -80,8 +102,8 @@ impl MovingBallKf {
         let constant_velocity_prediction = matrix![
             1.0, 0.0, dt, 0.0;
             0.0, 1.0, 0.0, dt;
-            0.0, 0.0, exponential_velocity_decay, 0.0;
-            0.0, 0.0, 0.0, exponential_velocity_decay;
+            0.0, 0.0, 1.0 - exponential_velocity_decay, 0.0;
+            0.0, 0.0, 0.0, 1.0 - exponential_velocity_decay;
         ];
 
         let inverse_odometry = odometry.offset_to_last.inverse();
@@ -118,17 +140,6 @@ impl MovingBallKf {
     }
 }
 
-// #[derive(Clone, Debug)]
-// pub struct StationaryBall {
-//     pub position: Point2<f32>,
-// }
-
-// impl From<Point2<f32>> for StationaryBall {
-//     fn from(position: Point2<f32>) -> Self {
-//         Self { position }
-//     }
-// }
-
 #[derive(Clone, Debug)]
 pub struct MovingBall {
     pub position: Point2<f32>,
@@ -163,21 +174,14 @@ impl BallHypothesis {
         self.filter.state().position
     }
 
-    pub fn predict(
-        &mut self,
-        odometry: &Odometry,
-        moving_process_noise: Matrix4<f32>,
-        linear_velocity_decay: f32,
-        exponential_velocity_decay: f32,
-        dt: Duration,
-    ) {
-        // TODO: config values
-        const MIN_SPEED: f32 = 0.05; // m/s
+    pub fn predict(&mut self, odometry: &Odometry, dt: Duration, config: &BallHypothesisConfig) {
+        let moving_process_noise =
+            Matrix4::from_diagonal(&Vector4::from(config.moving_process_noise));
 
         self.filter.predict(
             odometry,
-            linear_velocity_decay,
-            exponential_velocity_decay,
+            config.linear_velocity_decay,
+            config.exponential_velocity_decay,
             dt,
             moving_process_noise,
         );
@@ -199,11 +203,11 @@ impl BallHypothesis {
 
         // demote to stationary
         if (self.num_observations < 5 && self.last_update.elapsed() > Duration::from_secs(3))
-            || (self.num_observations > 5 && self.filter.state().velocity.norm() < MIN_SPEED)
+            || (self.num_observations > 5
+                && self.filter.state().velocity.norm() < config.min_moving_speed)
         {
             // set velocity to zero
             self.filter.state = Vector4::new(pos.x, pos.y, 0.0, 0.0);
-            // TODO: covariance?
         }
     }
 
@@ -228,22 +232,16 @@ impl BallHypothesis {
     }
 }
 
-fn predict(mut hypotheses: Query<&mut BallHypothesis>, odometry: Res<Odometry>, time: Res<Time>) {
+fn predict(
+    mut hypotheses: Query<&mut BallHypothesis>,
+    odometry: Res<Odometry>,
+    time: Res<Time>,
+    config: Res<BallHypothesisConfig>,
+) {
     for mut hypothesis in &mut hypotheses {
-        // TODO: config values
-        const LINEAR_VELOCITY_DECAY: f32 = 0.1; // per second
-        const EXPONENTIAL_VELOCITY_DECAY: f32 = 0.998; // per second
-        let moving_process_noise = Matrix4::from_diagonal(&Vector4::new(0.005, 0.005, 0.02, 0.02));
-
         let dt = time.delta();
 
-        hypothesis.predict(
-            &odometry,
-            moving_process_noise,
-            LINEAR_VELOCITY_DECAY,
-            EXPONENTIAL_VELOCITY_DECAY,
-            dt,
-        );
+        hypothesis.predict(&odometry, dt, &config);
     }
 }
 
@@ -251,6 +249,7 @@ fn measurement_update(
     mut commands: Commands,
     mut hypotheses: Query<&mut BallHypothesis>,
     measurements: Query<(Entity, &BallPerception), Added<BallPerception>>,
+    config: Res<BallHypothesisConfig>,
 ) {
     let amount_of_measurements = measurements.iter().count();
 
@@ -258,20 +257,22 @@ fn measurement_update(
         let updated = hypotheses
             .iter_mut()
             .filter(|hypothesis| {
-                // TODO: config values
-                const MAX_DISTANCE: f32 = 2.5;
-
-                nalgebra::distance(&hypothesis.position(), &measurement.position) < MAX_DISTANCE
+                nalgebra::distance(&hypothesis.position(), &measurement.position)
+                    < config.max_association_distance
             })
             .map(|mut hypothesis| {
                 hypothesis.num_observations += 1;
                 hypothesis.last_cycle = measurement.cycle;
                 hypothesis.last_update = Instant::now();
 
-                // TODO: config values
-                let measurement_noise = Matrix2::from_diagonal(&Vector2::new(0.1, 0.1));
+                // use measured ball distance to robot in noise calculation (further away ball projections will be more noisy)
+                let noise_scale = (1.0
+                    + nalgebra::distance(&hypothesis.position(), &measurement.position))
+                .pow(2);
+                let measurement_noise = Matrix2::from_diagonal(
+                    &(Vector2::from(config.measurement_noise) * noise_scale),
+                );
 
-                // TODO: use ball distance in noise calculation
                 hypothesis
                     .filter
                     .update(
@@ -284,9 +285,10 @@ fn measurement_update(
             .count();
 
         if updated == 0 && amount_of_measurements < MAX_CONCURRENT_HYPOTHESES {
-            // TODO: config values
-            let initial_measurement_covariance = Matrix4::identity();
-            let filter = MovingBallKf::new(measurement.position, initial_measurement_covariance);
+            let initial_covariance =
+                Matrix4::from_diagonal(&Vector4::from(config.initial_covariance));
+
+            let filter = MovingBallKf::new(measurement.position, initial_covariance);
 
             commands.spawn(BallHypothesis {
                 filter,
@@ -460,11 +462,9 @@ fn log_3d_balls(
         (Vector2::default(), 0.0)
     };
 
-    // add a little rotation in the direction of velocity angle rotated by robot orientation
-
     // rotate around normal
     let delta_rotation = Rotation3::from_axis_angle(
-        &UnitVector3::new_normalize(Vector3::new(velocity_vector.x, velocity_vector.y, 0.0)),
+        &UnitVector3::new_normalize(Vector3::new(velocity_vector.y, -velocity_vector.x, 0.0)),
         velocity_magnitude * FREQ / BALL_RADIUS,
     );
 
@@ -486,7 +486,7 @@ fn log_3d_balls(
             rerun::Transform3D::from_translation((pos.coords.x, pos.coords.y, 0.05))
                 .as_serialized_batches(),
             // velocity arrow
-            rerun::Arrows3D::from_vectors([(velocity_vector.y, -velocity_vector.x, 0.0)])
+            rerun::Arrows3D::from_vectors([(-velocity_vector.x, -velocity_vector.y, 0.0)])
                 .as_serialized_batches(),
             rerun::SerializedComponentBatch::new(
                 Arc::new(arrow::array::Float32Array::from_value(max_std, 1)),

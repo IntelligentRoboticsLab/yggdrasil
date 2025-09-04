@@ -25,7 +25,7 @@ use super::proposal::BallProposals;
 const IMAGE_INPUT_SIZE: usize = 32;
 
 #[serde_as]
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Resource, Serialize, Deserialize)]
 pub struct BallClassifierConfig {
     /// Minimum confidence score threshold for accepting a ball detection
     pub confidence_threshold: f32,
@@ -33,20 +33,6 @@ pub struct BallClassifierConfig {
     /// The amount of time in microseconds we allow the classifier to run, proposals that take longer are discarded.
     #[serde_as(as = "DurationMicroSeconds<u64>")]
     pub time_budget: Duration,
-
-    /// Process noise parameter for position prediction in the Kalman filter
-    pub prediction_noise: f32,
-
-    /// Measurement noise parameter for the Kalman filter
-    pub measurement_noise: f32,
-
-    /// Maximum standard deviation threshold for stationary ball detection in the Kalman filter.
-    ///
-    /// Values below this threshold indicate the ball is stationary, while values above indicate movement.
-    ///
-    /// # Note:
-    /// Currently we only track stationary balls, not moving ones.
-    pub stationary_std_threshold: f32,
 }
 
 /// Plugin for classifying ball proposals produced by [`super::proposal::BallProposalPlugin`].

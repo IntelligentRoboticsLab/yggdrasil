@@ -17,7 +17,7 @@ use serde_with::{DurationMilliSeconds, serde_as};
 use crate::{
     nao::{NaoManager, Priority},
     prelude::*,
-    vision::ball_detection::hypothesis::Ball,
+    vision::ball_detection::hypothesis::{Ball, BallHypothesisConfig},
 };
 
 use self::classifier::BallClassifierConfig;
@@ -46,6 +46,7 @@ pub struct BallDetectionConfig {
     pub max_classification_age_eye_color: Duration,
     pub proposal: BallProposalConfigs,
     pub classifier: BallClassifierConfig,
+    pub hypothesis: BallHypothesisConfig,
 }
 
 impl Config for BallDetectionConfig {
@@ -55,6 +56,8 @@ impl Config for BallDetectionConfig {
 // TODO: find a better way to do this (reflection :sob:)
 fn init_subconfigs(mut commands: Commands, config: Res<BallDetectionConfig>) {
     commands.insert_resource(config.proposal.clone());
+    commands.insert_resource(config.classifier.clone());
+    commands.insert_resource(config.hypothesis.clone());
 }
 
 fn detected_ball_eye_color(
