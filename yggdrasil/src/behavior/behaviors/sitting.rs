@@ -33,6 +33,5 @@ fn sitting(
     // Makes right eye blue.
     nao_manager.set_right_eye_led(RightEye::fill(color::f32::BLUE), Priority::default());
     step_context.request_sit();
-    // head_motion_manager.request_neutral();
-    head_motion_manager.request_look_around();
+    head_motion_manager.request_neutral();
 }
