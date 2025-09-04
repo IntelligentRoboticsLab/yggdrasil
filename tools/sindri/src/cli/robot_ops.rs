@@ -139,7 +139,7 @@ pub struct ConfigOptsRobotOps {
     )]
     pub robots: Vec<RobotEntry>,
 
-    #[clap(long, default_value = "0.1")]
+    #[clap(long, default_value = "-10.0")]
     pub volume: f64,
 
     /// Whether to use the `timings` feature in the `yggdrasil` binary [default: false]
