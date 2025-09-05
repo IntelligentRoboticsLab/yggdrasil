@@ -3,12 +3,11 @@ use std::{
     time::{Duration, Instant},
 };
 
-use ordered_float::Pow;
 use rerun::{AsComponents, Rotation3D, components::RotationAxisAngle};
 
 use bevy::prelude::*;
 
-use filter::{CovarianceMatrix, KalmanFilter};
+use filter::{CovarianceMatrix, KalmanFilter, mahalanobis_distance};
 use nalgebra::{
     Matrix2, Matrix2x4, Matrix4, Point2, Rotation3, UnitVector3, Vector2, Vector3, Vector4, matrix,
     vector,
@@ -17,7 +16,7 @@ use rerun::external::arrow;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    core::debug::DebugContext,
+    core::debug::{DebugContext, serialized_component_batch_f32},
     localization::{RobotPose, odometry::Odometry},
     nao::{CYCLES_PER_SECOND, Cycle},
 };
@@ -112,7 +111,8 @@ impl MovingBallKf {
 
         // apply linear velocity decay
         let linear_decay = if self.is_moving() {
-            -self.state().velocity.normalize() * dt * linear_velocity_decay
+            -self.state().velocity.normalize()
+                * (dt * linear_velocity_decay).min(self.state().velocity.norm())
         } else {
             Vector2::zeros()
         };
@@ -186,26 +186,12 @@ impl BallHypothesis {
             moving_process_noise,
         );
 
-        let pos = self.filter.state().position;
-        let cov_2d = self
-            .filter
-            .covariance()
-            .fixed_view::<2, 2>(0, 0)
-            .into_owned();
-
-        let gain = nll_of_position(
-            pos.coords,
-            cov_2d,
-            odometry.offset_to_last.translation.vector,
-        );
-        self.nll_of_measurements += gain;
-        self.nll_weight = self.nll_of_measurements + nll_of_mean(cov_2d);
-
         // demote to stationary
         if (self.num_observations < 5 && self.last_update.elapsed() > Duration::from_secs(3))
             || (self.num_observations > 5
                 && self.filter.state().velocity.norm() < config.min_moving_speed)
         {
+            let pos = self.filter.state().position;
             // set velocity to zero
             self.filter.state = Vector4::new(pos.x, pos.y, 0.0, 0.0);
         }
@@ -257,7 +243,16 @@ fn measurement_update(
         let updated = hypotheses
             .iter_mut()
             .filter(|hypothesis| {
-                nalgebra::distance(&hypothesis.position(), &measurement.position)
+                mahalanobis_distance(
+                    measurement.position.coords,
+                    hypothesis.position().coords,
+                    hypothesis
+                        .filter
+                        .covariance()
+                        .fixed_view::<2, 2>(0, 0)
+                        .into_owned(),
+                )
+                .unwrap()
                     < config.max_association_distance
             })
             .map(|mut hypothesis| {
@@ -265,14 +260,26 @@ fn measurement_update(
                 hypothesis.last_cycle = measurement.cycle;
                 hypothesis.last_update = Instant::now();
 
-                // use measured ball distance to robot in noise calculation (further away ball projections will be more noisy)
-                let noise_scale = (1.0
-                    + nalgebra::distance(&hypothesis.position(), &measurement.position))
-                .pow(2);
+                // use measured ball distance to robot in noise calculation
+                // (further away ball projections will be more noisy)
                 let measurement_noise = Matrix2::from_diagonal(
-                    &(Vector2::from(config.measurement_noise) * noise_scale),
+                    &(Vector2::from(config.measurement_noise)
+                        * noise_scale(measurement.position.coords.norm())),
                 );
 
+                // update nll
+                let position = hypothesis.filter.state().position;
+                let cov_2d = hypothesis
+                    .filter
+                    .covariance()
+                    .fixed_view::<2, 2>(0, 0)
+                    .into_owned();
+
+                let gain = nll_of_position(measurement.position, measurement_noise, position);
+                hypothesis.nll_of_measurements += gain;
+                hypothesis.nll_weight = hypothesis.nll_of_measurements - nll_of_mean(cov_2d);
+
+                // update filter
                 hypothesis
                     .filter
                     .update(
@@ -334,7 +341,7 @@ fn merge_balls(mut commands: Commands, mut hypotheses: Query<(Entity, &mut BallH
 pub struct BallState {
     pub last_cycle: Cycle,
     pub last_update: Instant,
-    covariance: Matrix2<f32>,
+    covariance: Matrix4<f32>,
     pub position: Point2<f32>,
     pub velocity: Option<Vector2<f32>>,
 }
@@ -368,11 +375,7 @@ fn update_reliable_ball(hypotheses: Query<&BallHypothesis>, mut ball: ResMut<Bal
     *ball = Ball::Some(BallState {
         last_cycle: reliable_ball.last_cycle,
         last_update: reliable_ball.last_update,
-        covariance: reliable_ball
-            .filter
-            .covariance()
-            .fixed_view::<2, 2>(0, 0)
-            .into_owned(),
+        covariance: reliable_ball.filter.covariance(),
         position: reliable_ball.position(),
         velocity: reliable_ball
             .is_moving()
@@ -381,10 +384,19 @@ fn update_reliable_ball(hypotheses: Query<&BallHypothesis>, mut ball: ResMut<Bal
 }
 
 fn clean_old_hypotheses(mut commands: Commands, hypotheses: Query<(Entity, &BallHypothesis)>) {
-    const DESPAWN_TIME: Duration = Duration::from_secs(5);
-
     for (entity, hypothesis) in &hypotheses {
-        if hypothesis.last_update.elapsed() > DESPAWN_TIME {
+        // meters
+        const DESPAWN_UNCERTAINTY: f32 = 10.0;
+
+        if hypothesis
+            .filter
+            .covariance()
+            .fixed_view::<2, 2>(0, 0)
+            .diagonal()
+            .max()
+            .sqrt()
+            > DESPAWN_UNCERTAINTY
+        {
             commands.entity(entity).despawn();
         }
     }
@@ -449,7 +461,7 @@ fn log_3d_balls(
         return;
     };
 
-    let pos = robot_pose.robot_to_world(&ball.position);
+    let position = robot_pose.robot_to_world(&ball.position);
 
     let (velocity_vector, velocity_magnitude) = if let Some(velocity_vector) = ball.velocity {
         // rotate the velocity vector to world frame
@@ -471,8 +483,7 @@ fn log_3d_balls(
     // update current rotation so that the new rotation is added to it
     *current_rotation = delta_rotation * *current_rotation;
 
-    let max_variance = ball.covariance.diagonal().max();
-    let max_std = max_variance.sqrt();
+    let stds = ball.covariance.diagonal().map(f32::sqrt);
     let (axis, angle) = current_rotation
         .axis_angle()
         .unwrap_or((Vector3::z_axis(), 0.0));
@@ -482,16 +493,13 @@ fn log_3d_balls(
         *cycle,
         &[
             // ball position
-            rerun::Transform3D::from_translation((pos.coords.x, pos.coords.y, 0.05))
+            rerun::Transform3D::from_translation((position.coords.x, position.coords.y, 0.05))
                 .as_serialized_batches(),
             // velocity arrow
             rerun::Arrows3D::from_vectors([(velocity_vector.x, velocity_vector.y, 0.0)])
                 .as_serialized_batches(),
-            rerun::SerializedComponentBatch::new(
-                Arc::new(arrow::array::Float32Array::from_value(max_std, 1)),
-                rerun::ComponentDescriptor::new("yggdrasil.components.MaxStd"),
-            )
-            .as_serialized_batches(),
+            serialized_component_batch_f32("yggdrasil.components.StdDevs", stds.iter().copied())
+                .as_serialized_batches(),
             rerun::SerializedComponentBatch::new(
                 Arc::new(arrow::array::UInt64Array::from_value(
                     ball.last_cycle.0 as u64,
@@ -515,7 +523,7 @@ fn log_3d_balls(
 }
 
 /// Returns the unnormalized negative log-likelihood (nll) of a 2D Gaussian at a given position.
-fn nll_of_position(mean: Vector2<f32>, cov: Matrix2<f32>, pos: Vector2<f32>) -> f32 {
+fn nll_of_position(mean: Point2<f32>, cov: Matrix2<f32>, pos: Point2<f32>) -> f32 {
     let diff = pos - mean;
     let mahalanobis_distance_sqr = diff.dot(
         &(cov
@@ -529,6 +537,13 @@ fn nll_of_position(mean: Vector2<f32>, cov: Matrix2<f32>, pos: Vector2<f32>) -> 
 /// Returns the nll of a 2d gaussian at its mean
 fn nll_of_mean(cov: Matrix2<f32>) -> f32 {
     0.5 * cov.determinant().max(0.0).ln()
+}
+
+/// Scales measurement noise based on distance to robot
+///
+/// See: <https://www.desmos.com/calculator/ijpgmecivz>
+fn noise_scale(distance: f32) -> f32 {
+    0.5 * distance.powi(2).min(1.0)
 }
 
 impl From<Vector4<f32>> for MovingBall {
