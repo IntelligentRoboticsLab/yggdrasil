@@ -19,7 +19,7 @@ use crate::{
     localization::RobotPose,
     motion::{step_planner::Target, walking_engine::step::Step},
     nao::{NaoManager, Priority},
-    vision::ball_detection::ball_tracker::BallTracker,
+    vision::ball_detection::{TeamBallPosition, ball_tracker::BallTracker},
 };
 
 use std::time::Duration;
@@ -98,16 +98,18 @@ fn reset_striker_role(mut nao_manager: ResMut<NaoManager>) {
     nao_manager.set_right_eye_led(RightEye::fill(color::f32::EMPTY), Priority::default());
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn striker_role(
     mut commands: Commands,
     pose: Res<RobotPose>,
     layout_config: Res<LayoutConfig>,
+    detected_ball_position: Res<TeamBallPosition>,
     ball_tracker: Res<BallTracker>,
     mut nao_manager: ResMut<NaoManager>,
     lost_ball_timer: Option<ResMut<LostBallSearchTimer>>,
     time: Res<Time>,
 ) {
-    let Some(relative_ball) = ball_tracker.stationary_ball() else {
+    let Some(relative_ball) = detected_ball_position.0 else {
         if let Some(mut timer) = lost_ball_timer {
             timer.timer.tick(time.delta()); // <- tick the timer
 
@@ -129,8 +131,6 @@ pub fn striker_role(
         }
         return;
     };
-    let absolute_ball: nalgebra::OPoint<f32, nalgebra::Const<2>> =
-        pose.robot_to_world(&relative_ball);
 
     if ball_tracker.timestamp.elapsed().as_secs_f32() > 0.5 {
         if lost_ball_timer.is_none() {
@@ -143,6 +143,7 @@ pub fn striker_role(
         commands.remove_resource::<LostBallSearchTimer>();
     }
 
+    let absolute_ball = pose.robot_to_world(&relative_ball);
     let ball_angle = pose.angle_to(&absolute_ball);
     let ball_distance = relative_ball.coords.norm();
     let ball_target: nalgebra::OPoint<f32, nalgebra::Const<3>> =
@@ -210,12 +211,12 @@ pub fn striker_role(
 //TODO: Make this a separate stand-alone behavior
 fn set_play(
     mut commands: Commands,
-    ball_tracker: Res<BallTracker>,
+    detected_ball_position: Res<TeamBallPosition>,
     pose: Res<RobotPose>,
     behavior_state: Res<State<BehaviorState>>,
     walk: Option<Res<Walk>>,
 ) {
-    let Some(relative_ball) = ball_tracker.stationary_ball() else {
+    let Some(relative_ball) = detected_ball_position.0 else {
         return;
     };
     let absolute_ball = pose.robot_to_world(&relative_ball);

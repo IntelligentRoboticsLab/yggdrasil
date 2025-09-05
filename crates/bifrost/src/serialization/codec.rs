@@ -404,6 +404,44 @@ where
     }
 }
 
+impl<T> Encode for Option<T>
+where
+    T: Encode,
+{
+    fn encode(&self, mut write: impl Write) -> Result<()> {
+        match self {
+            Some(inner) => {
+                write.write_u8(1)?;
+                inner.encode(write)
+            }
+            None => Ok(write.write_u8(0)?),
+        }
+    }
+
+    fn encode_len(&self) -> usize {
+        match self {
+            Some(inner) => inner.encode_len() + 1,
+            None => 1,
+        }
+    }
+}
+
+impl<T> Decode for Option<T>
+where
+    T: Decode,
+{
+    fn decode(mut read: impl Read) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        match read.read_u8()? {
+            0 => Ok(None),
+            1 => Ok(Some(T::decode(read)?)),
+            n => Err(Error::InvalidVariantDiscriminant(n as usize, "Option")),
+        }
+    }
+}
+
 impl<T> Encode for Vec<T>
 where
     T: Encode,
