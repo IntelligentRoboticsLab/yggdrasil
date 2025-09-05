@@ -18,34 +18,63 @@ use serde::{Deserialize, Serialize};
 use crate::{
     core::debug::{DebugContext, serialized_component_batch_f32},
     localization::{RobotPose, odometry::Odometry},
-    nao::{CYCLES_PER_SECOND, Cycle},
+    nao::Cycle,
+    vision::ball_detection::classifier::BallPerception,
 };
-
-// for logging ball rotation
-const BALL_RADIUS: f32 = 0.05; // 5 cm
-const FREQ: f32 = 1.0 / CYCLES_PER_SECOND; // 82 Hz
 
 #[derive(Debug, Clone, Default, Resource, Serialize, Deserialize)]
 pub struct BallHypothesisConfig {
     /// Maximum amount of ball hypotheses tracked at the same time
-    pub max_concurrent_hypotheses: usize,
+    pub max_concurrent_hypotheses: u32,
+
     /// Minimum speed to be considered as still moving
     pub min_moving_speed: f32,
-    /// Constant speed loss in m/s
+
+    /// Minimum amount of observations before a moving ball can be demoted to stationary for losing speed
+    pub min_demotion_observations: u32,
+
+    /// Speed loss in m/s
     pub linear_velocity_decay: f32,
-    /// Percentual speed loss in m/s
+
+    /// Speed loss in percentage/s
     pub exponential_velocity_decay: f32,
-    /// Maximum distance to associate a measurement to a hypothesis
-    pub max_association_distance: f32,
+
+    /// Maximum mahalanobis distance to associate a measurement to a hypothesis
+    pub max_mahalonobis_association_distance: f32,
+
+    /// Maximum euclidean distance to associate a measurement to a hypothesis
+    pub max_euclidean_association_distance: f32,
+
+    /// Maximum speed difference for merging moving ball hypotheses in m/s
+    pub max_merge_speed_difference: f32,
+
+    /// Maximum angle difference for merging moving ball hypotheses in radians
+    pub max_merge_angle_difference: f32,
+
+    /// Uncertainty in meters for despawning a ball hypothesis
+    pub despawn_uncertainty: f32,
+
     /// Process noise for moving ball model
     pub moving_process_noise: [f32; 4],
+
     /// Ball position measurement noise
     pub measurement_noise: [f32; 2],
+
     /// Initial covariance for new ball hypotheses
     pub initial_covariance: [f32; 4],
 }
 
-const MAX_CONCURRENT_HYPOTHESES: usize = 8;
+/// Ball radius in meters for logging ball rotation
+const BALL_RADIUS: f32 = 0.05;
+
+/// Minimum lifetime of a ball hypothesis before it can be removed
+const MIN_BALL_LIFETIME: Duration = Duration::from_secs(3);
+
+/// Duration after which an unreliable ball hypothesis can be demoted to stationary
+///
+/// Only applies if the ball has less than `min_demotion_observations` observations
+const UNRELIABLE_DEMOTION_DURATION: Duration = Duration::from_secs(3);
+
 const INITIAL_NLL_OF_MEASUREMENTS: f32 = 0.0;
 const INITIAL_NLL_WEIGHT: f32 = f32::MAX;
 
@@ -71,6 +100,7 @@ impl Plugin for BallHypothesisPlugin {
     }
 }
 
+/// Kalman filter for a moving ball with state [x, y, vx, vy]
 #[derive(Clone, Debug, Deref, DerefMut)]
 pub struct MovingBallKf(KalmanFilter<4, MovingBall>);
 
@@ -101,8 +131,8 @@ impl MovingBallKf {
         let constant_velocity_prediction = matrix![
             1.0, 0.0, dt, 0.0;
             0.0, 1.0, 0.0, dt;
-            0.0, 0.0, 1.0 - exponential_velocity_decay, 0.0;
-            0.0, 0.0, 0.0, 1.0 - exponential_velocity_decay;
+            0.0, 0.0, 1.0 - exponential_velocity_decay * dt, 0.0;
+            0.0, 0.0, 0.0, 1.0 - exponential_velocity_decay * dt;
         ];
 
         let inverse_odometry = odometry.offset_to_last.inverse();
@@ -147,18 +177,12 @@ pub struct MovingBall {
 }
 
 #[derive(Clone, Component, Debug)]
-pub struct BallPerception {
-    // Relative position from the robot at which a ball is detected
-    pub position: Point2<f32>,
-    pub cycle: Cycle,
-}
-
-#[derive(Clone, Component, Debug)]
 pub struct BallHypothesis {
     pub filter: MovingBallKf,
     pub nll_of_measurements: f32,
     pub nll_weight: f32,
     pub num_observations: u32,
+    pub spawned_at: Instant,
     pub last_update: Instant,
     pub last_cycle: Cycle,
 }
@@ -186,10 +210,11 @@ impl BallHypothesis {
             moving_process_noise,
         );
 
+        let is_reliable = self.num_observations >= config.min_demotion_observations;
+
         // demote to stationary
-        if (self.num_observations < 5 && self.last_update.elapsed() > Duration::from_secs(3))
-            || (self.num_observations > 5
-                && self.filter.state().velocity.norm() < config.min_moving_speed)
+        if (!is_reliable && self.last_update.elapsed() > UNRELIABLE_DEMOTION_DURATION)
+            || (is_reliable && self.filter.state().velocity.norm() < config.min_moving_speed)
         {
             let pos = self.filter.state().position;
             // set velocity to zero
@@ -204,7 +229,8 @@ impl BallHypothesis {
         self.last_update = self.last_update.max(other.last_update);
         self.last_cycle = self.last_cycle.max(other.last_cycle);
 
-        self.filter
+        if self
+            .filter
             .update(
                 other.filter.state().position.coords,
                 Matrix2x4::identity(),
@@ -214,7 +240,10 @@ impl BallHypothesis {
                     .fixed_view::<2, 2>(0, 0)
                     .into_owned(),
             )
-            .expect("Failed to merge ball filter");
+            .is_err()
+        {
+            tracing::warn!("Failed to merge ball filter");
+        }
     }
 }
 
@@ -237,9 +266,9 @@ fn measurement_update(
     measurements: Query<(Entity, &BallPerception), Added<BallPerception>>,
     config: Res<BallHypothesisConfig>,
 ) {
-    let amount_of_measurements = measurements.iter().count();
-
     for (entity, measurement) in &measurements {
+        let amount_of_hypotheses = hypotheses.iter().count();
+
         let updated = hypotheses
             .iter_mut()
             .filter(|hypothesis| {
@@ -252,8 +281,10 @@ fn measurement_update(
                         .fixed_view::<2, 2>(0, 0)
                         .into_owned(),
                 )
-                .unwrap()
-                    < config.max_association_distance
+                .unwrap_or_default()
+                    < config.max_mahalonobis_association_distance
+                    && measurement.position.coords.norm()
+                        < config.max_euclidean_association_distance
             })
             .map(|mut hypothesis| {
                 hypothesis.num_observations += 1;
@@ -275,23 +306,31 @@ fn measurement_update(
                     .fixed_view::<2, 2>(0, 0)
                     .into_owned();
 
-                let gain = nll_of_position(measurement.position, measurement_noise, position);
-                hypothesis.nll_of_measurements += gain;
-                hypothesis.nll_weight = hypothesis.nll_of_measurements - nll_of_mean(cov_2d);
+                if let Some(gain) =
+                    nll_of_position(measurement.position, measurement_noise, position)
+                {
+                    hypothesis.nll_of_measurements += gain;
+                    hypothesis.nll_weight = hypothesis.nll_of_measurements - nll_of_mean(cov_2d);
+                } else {
+                    tracing::warn!("Failed to calculate nll for ball hypothesis");
+                }
 
                 // update filter
-                hypothesis
+                if hypothesis
                     .filter
                     .update(
                         measurement.position.coords,
                         Matrix2x4::identity(),
                         measurement_noise,
                     )
-                    .expect("Failed to update moving ball filter");
+                    .is_err()
+                {
+                    tracing::warn!("Failed to update moving ball filter");
+                }
             })
             .count();
 
-        if updated == 0 && amount_of_measurements < MAX_CONCURRENT_HYPOTHESES {
+        if updated == 0 && amount_of_hypotheses < config.max_concurrent_hypotheses as usize {
             let initial_covariance =
                 Matrix4::from_diagonal(&Vector4::from(config.initial_covariance));
 
@@ -302,6 +341,7 @@ fn measurement_update(
                 nll_of_measurements: INITIAL_NLL_OF_MEASUREMENTS,
                 nll_weight: INITIAL_NLL_WEIGHT,
                 num_observations: 1,
+                spawned_at: Instant::now(),
                 last_update: Instant::now(),
                 last_cycle: measurement.cycle,
             });
@@ -313,7 +353,11 @@ fn measurement_update(
 }
 
 /// Merges ball hypotheses that are of the same type (stationary/moving) and close to each other
-fn merge_balls(mut commands: Commands, mut hypotheses: Query<(Entity, &mut BallHypothesis)>) {
+fn merge_balls(
+    mut commands: Commands,
+    mut hypotheses: Query<(Entity, &mut BallHypothesis)>,
+    config: Res<BallHypothesisConfig>,
+) {
     let mut skip = vec![];
     let mut combinations = hypotheses.iter_combinations_mut();
     while let Some([(entity_a, mut a), (entity_b, b)]) = combinations.fetch_next() {
@@ -321,11 +365,31 @@ fn merge_balls(mut commands: Commands, mut hypotheses: Query<(Entity, &mut BallH
             continue;
         }
 
-        if a.is_moving() != b.is_moving() {
+        // only merge if they are
+        // a) both stationary
+        // b) both moving with similar velocity and direction
+        if a.is_moving() != b.is_moving()
+            || (a.is_moving()
+                && (a.filter.state().velocity - b.filter.state().velocity).norm()
+                    > config.max_merge_speed_difference
+                && a.filter
+                    .state()
+                    .velocity
+                    .angle(&b.filter.state().velocity)
+                    .abs()
+                    > config.max_merge_angle_difference)
+        {
             continue;
         }
 
-        if nalgebra::distance(&a.position(), &b.position()) < 0.1 {
+        // only merge if they are close enough (considering uncertainty)
+        if mahalanobis_distance(
+            a.position().coords,
+            b.position().coords,
+            a.filter.covariance().fixed_view::<2, 2>(0, 0).into_owned(),
+        )
+        .is_ok_and(|d| d < config.max_mahalonobis_association_distance)
+        {
             // Merge the two hypotheses
             a.merge(&b);
             skip.push(entity_b);
@@ -383,10 +447,15 @@ fn update_reliable_ball(hypotheses: Query<&BallHypothesis>, mut ball: ResMut<Bal
     });
 }
 
-fn clean_old_hypotheses(mut commands: Commands, hypotheses: Query<(Entity, &BallHypothesis)>) {
+fn clean_old_hypotheses(
+    mut commands: Commands,
+    hypotheses: Query<(Entity, &BallHypothesis)>,
+    config: Res<BallHypothesisConfig>,
+) {
     for (entity, hypothesis) in &hypotheses {
-        // meters
-        const DESPAWN_UNCERTAINTY: f32 = 10.0;
+        if hypothesis.spawned_at.elapsed() < MIN_BALL_LIFETIME {
+            continue;
+        }
 
         if hypothesis
             .filter
@@ -395,7 +464,7 @@ fn clean_old_hypotheses(mut commands: Commands, hypotheses: Query<(Entity, &Ball
             .diagonal()
             .max()
             .sqrt()
-            > DESPAWN_UNCERTAINTY
+            > config.despawn_uncertainty
         {
             commands.entity(entity).despawn();
         }
@@ -445,6 +514,7 @@ fn log_3d_balls(
     ball: Res<Ball>,
     cycle: Res<Cycle>,
     robot_pose: Res<RobotPose>,
+    time: Res<Time>,
     // local ball rotation
     mut current_rotation: Local<Rotation3<f32>>,
 ) {
@@ -462,23 +532,25 @@ fn log_3d_balls(
     };
 
     let position = robot_pose.robot_to_world(&ball.position);
+    let dt = time.delta_secs();
 
-    let (velocity_vector, velocity_magnitude) = if let Some(velocity_vector) = ball.velocity {
+    let (velocity_vector, delta_rotation) = if let Some(velocity_vector) = ball.velocity {
         // rotate the velocity vector to world frame
         let rotation = robot_pose.inner.rotation;
         let velocity_vector = rotation * velocity_vector;
 
         let velocity_magnitude = velocity_vector.norm();
-        (velocity_vector, velocity_magnitude)
-    } else {
-        (Vector2::default(), 0.0)
-    };
 
-    // rotate around normal
-    let delta_rotation = Rotation3::from_axis_angle(
-        &UnitVector3::new_normalize(Vector3::new(velocity_vector.y, -velocity_vector.x, 0.0)),
-        -velocity_magnitude * FREQ / BALL_RADIUS,
-    );
+        // rotate around normal
+        let delta_rotation = Rotation3::from_axis_angle(
+            &UnitVector3::new_normalize(Vector3::new(velocity_vector.y, -velocity_vector.x, 0.0)),
+            -velocity_magnitude * dt / BALL_RADIUS,
+        );
+
+        (velocity_vector, delta_rotation)
+    } else {
+        (Vector2::default(), Rotation3::identity())
+    };
 
     // update current rotation so that the new rotation is added to it
     *current_rotation = delta_rotation * *current_rotation;
@@ -523,15 +595,10 @@ fn log_3d_balls(
 }
 
 /// Returns the unnormalized negative log-likelihood (nll) of a 2D Gaussian at a given position.
-fn nll_of_position(mean: Point2<f32>, cov: Matrix2<f32>, pos: Point2<f32>) -> f32 {
+fn nll_of_position(mean: Point2<f32>, cov: Matrix2<f32>, pos: Point2<f32>) -> Option<f32> {
     let diff = pos - mean;
-    let mahalanobis_distance_sqr = diff.dot(
-        &(cov
-            .try_inverse()
-            .expect("Failed to invert covariance matrix")
-            * diff),
-    );
-    0.5 * mahalanobis_distance_sqr
+    let mahalanobis_distance_sqr = diff.dot(&(cov.try_inverse()? * diff));
+    Some(0.5 * mahalanobis_distance_sqr)
 }
 
 /// Returns the nll of a 2d gaussian at its mean

@@ -125,7 +125,7 @@ where
     pub state: StateVector<D_STATE>,
     pub covariance: CovarianceMatrix<D_STATE>,
 
-    _state_transform: PhantomData<S>,
+    _marker: PhantomData<S>,
 }
 
 impl<const D_STATE: usize, const N_SIGMAS: usize, S: StateTransform<D_STATE>>
@@ -154,7 +154,7 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, S: StateTransform<D_STATE>>
             sigmas,
             state: state.into(),
             covariance,
-            _state_transform: PhantomData,
+            _marker: PhantomData,
         }
     }
 
@@ -341,7 +341,7 @@ where
         }
     }
 
-    /// The predicted filter state
+    /// The current predicted filter state
     #[must_use]
     pub fn state(&self) -> S {
         self.state.into()

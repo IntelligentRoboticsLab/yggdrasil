@@ -1,13 +1,12 @@
 //! See [`BallClassifierPlugin`].
 
-use std::marker::PhantomData;
 use std::time::{Duration, Instant};
 
 use bevy::prelude::*;
 use heimdall::{Bottom, CameraLocation, CameraMatrix, Top};
 use itertools::Itertools;
 use ml::prelude::ModelExecutor;
-use nalgebra::{Point2, Vector2};
+use nalgebra::Point2;
 
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationMicroSeconds, serde_as};
@@ -19,7 +18,6 @@ use crate::vision::referee::detect::VisualRefereeDetectionStatus;
 use ml::prelude::*;
 
 use super::BallDetectionConfig;
-use super::hypothesis::BallPerception;
 use super::proposal::BallProposals;
 
 const IMAGE_INPUT_SIZE: usize = 32;
@@ -64,46 +62,11 @@ impl MlModel for BallClassifierModel {
     const ONNX_PATH: &'static str = "models/ball_classifier.onnx";
 }
 
-#[derive(Debug)]
-pub struct Ball<T: CameraLocation> {
-    /// The position of the ball proposal in the image, in pixels.
-    pub position_image: Point2<f32>,
-    /// The vector from the robot to the ball proposal, in robot frame.
-    pub robot_to_ball: Vector2<f32>,
-    /// The absolute position of the ball proposal, in world frame.
+#[derive(Clone, Component, Debug)]
+pub struct BallPerception {
+    /// Ball position relative to the robot
     pub position: Point2<f32>,
-    /// Velocity of the ball proposal, in world frame.
-    // pub velocity: Vector2<f32>,
-    /// The scale of the ball proposal.
-    pub scale: f32,
-    /// The distance to the ball in meters, at the time of detection.
-    pub distance: f32,
-    /// The timestamp the ball was detected at.
-    pub timestamp: Instant,
-    /// The confidence score assigned to the detected ball.
-    pub confidence: f32,
-    /// The cycle of the image this ball was detected in.
     pub cycle: Cycle,
-    _marker: PhantomData<T>,
-}
-
-// NOTE: This needs to be implemented manually because of the `PhantomData`
-// https://github.com/rust-lang/rust/issues/26925
-impl<T: CameraLocation> Clone for Ball<T> {
-    fn clone(&self) -> Self {
-        Self {
-            position_image: self.position_image,
-            robot_to_ball: self.robot_to_ball,
-            position: self.position,
-            // velocity: self.velocity,
-            scale: self.scale,
-            distance: self.distance,
-            timestamp: self.timestamp,
-            confidence: self.confidence,
-            cycle: self.cycle,
-            _marker: PhantomData,
-        }
-    }
 }
 
 #[allow(clippy::too_many_arguments)]

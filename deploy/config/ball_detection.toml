@@ -11,7 +11,6 @@ grass_ratio = 0.7
 # Height/width of the bounding box around the ball
 bounding_box_scale = 80.0
 
-
 # The minimum overlap ratio between for bounding boxes to be merged using non-maximum suppression
 nms_threshold = 0.3
 
@@ -73,6 +72,42 @@ confidence_threshold = 0.97
 # The amount of time in microseconds we allow the classifier to run, proposals that take longer are discarded.
 time_budget = 1500
 
+# #[derive(Debug, Clone, Default, Resource, Serialize, Deserialize)]
+# pub struct BallHypothesisConfig {
+#     /// Maximum amount of ball hypotheses tracked at the same time
+#     pub max_concurrent_hypotheses: u32,
+
+#     /// Minimum speed to be considered as still moving
+#     pub min_moving_speed: f32,
+
+#     /// Minimum amount of observations before a moving ball can be demoted to stationary for losing speed
+#     pub min_demotion_observations: u32,
+
+#     /// Speed loss in m/s
+#     pub linear_velocity_decay: f32,
+
+#     /// Speed loss in percentage/s
+#     pub exponential_velocity_decay: f32,
+
+#     /// Maximum mahalanobis distance to associate a measurement to a hypothesis
+#     pub max_association_distance: f32,
+
+#     /// How close in meters ball hypotheses need to be to merge (only if both are stationary or moving)
+#     pub ball_merge_distance: f32,
+
+#     /// Uncertainty in meters for despawning a ball hypothesis
+#     pub despawn_uncertainty: f32,
+
+#     /// Process noise for moving ball model
+#     pub moving_process_noise: [f32; 4],
+
+#     /// Ball position measurement noise
+#     pub measurement_noise: [f32; 2],
+
+#     /// Initial covariance for new ball hypotheses
+#     pub initial_covariance: [f32; 4],
+# }
+
 [hypothesis]
 # Maximum amount of ball hypotheses tracked at the same time
 max_concurrent_hypotheses = 8
@@ -80,14 +115,29 @@ max_concurrent_hypotheses = 8
 # Minimum speed to be considered as still moving
 min_moving_speed = 0.05
 
-# Constant speed loss in m/s
+# Minimum amount of observations before a moving ball can be demoted to stationary for losing speed
+min_demotion_observations = 5
+
+# Speed loss in m/s
 linear_velocity_decay = 0.1
 
-# Percentual speed loss in m/s
-exponential_velocity_decay = 0.002
+# Speed loss in percentage/s
+exponential_velocity_decay = 0.15
 
-# Maximum distance to associate a measurement to a hypothesis
-max_association_distance = 2.0
+# Maximum mahalanobis distance to associate a measurement to a hypothesis
+max_mahalonobis_association_distance = 2.0
+
+# Maximum euclidean distance to associate a measurement to a hypothesis
+max_euclidean_association_distance = 2.0
+
+# Maximum speed difference for merging moving ball hypotheses in m/s
+max_merge_speed_difference = 0.5
+
+# Maximum angle difference for merging moving ball hypotheses in radians
+max_merge_angle_difference = 0.25
+
+# Uncertainty in meters for despawning a ball hypothesis
+despawn_uncertainty = 0.1
 
 # Process noise for moving ball model
 moving_process_noise = [0.005, 0.005, 0.05, 0.05]
