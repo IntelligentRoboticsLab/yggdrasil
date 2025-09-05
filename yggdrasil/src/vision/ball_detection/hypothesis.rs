@@ -3,7 +3,8 @@ use std::{
     time::{Duration, Instant},
 };
 
-use rerun::{AsComponents, Rotation3D, components::RotationAxisAngle};
+use itertools::MultiUnzip;
+use rerun::{AsComponents, components::PoseRotationAxisAngle};
 
 use bevy::prelude::*;
 
@@ -83,7 +84,7 @@ pub struct BallHypothesisPlugin;
 impl Plugin for BallHypothesisPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Ball>()
-            .add_systems(PostStartup, setup_3d_ball_debug_logging)
+            .add_systems(PostStartup, setup_3d_ball_log)
             .add_systems(
                 Update,
                 (
@@ -92,11 +93,11 @@ impl Plugin for BallHypothesisPlugin {
                     merge_balls,
                     clean_old_hypotheses,
                     normalize_measurement_nll,
-                    update_reliable_ball,
+                    update_best_ball,
                 )
                     .chain(),
             )
-            .add_systems(PostUpdate, log_3d_balls);
+            .add_systems(PostUpdate, (log_3d_hypotheses, log_3d_ball));
     }
 }
 
@@ -210,6 +211,7 @@ impl BallHypothesis {
             moving_process_noise,
         );
 
+        // check if the velocity is already reliable enough
         let is_reliable = self.num_observations >= config.min_demotion_observations;
 
         // demote to stationary
@@ -427,23 +429,34 @@ impl Ball {
     }
 }
 
-fn update_reliable_ball(hypotheses: Query<&BallHypothesis>, mut ball: ResMut<Ball>) {
-    let Some(reliable_ball) = hypotheses
+#[derive(Component)]
+struct BestHypothesis;
+
+fn update_best_ball(
+    mut commands: Commands,
+    hypotheses: Query<(Entity, &BallHypothesis)>,
+    mut ball: ResMut<Ball>,
+) {
+    let Some((entity, best_ball)) = hypotheses
         .iter()
-        .min_by(|a, b| a.nll_of_measurements.total_cmp(&b.nll_of_measurements))
+        .inspect(|(e, _)| {
+            commands.entity(*e).remove::<BestHypothesis>();
+        })
+        .min_by(|(_, a), (_, b)| a.nll_of_measurements.total_cmp(&b.nll_of_measurements))
     else {
         *ball = Ball::None;
         return;
     };
 
+    commands.entity(entity).insert(BestHypothesis);
     *ball = Ball::Some(BallState {
-        last_cycle: reliable_ball.last_cycle,
-        last_update: reliable_ball.last_update,
-        covariance: reliable_ball.filter.covariance(),
-        position: reliable_ball.position(),
-        velocity: reliable_ball
+        last_cycle: best_ball.last_cycle,
+        last_update: best_ball.last_update,
+        covariance: best_ball.filter.covariance(),
+        position: best_ball.position(),
+        velocity: best_ball
             .is_moving()
-            .then(|| reliable_ball.filter.state().velocity),
+            .then(|| best_ball.filter.state().velocity),
     });
 }
 
@@ -484,22 +497,37 @@ fn normalize_measurement_nll(mut hypotheses: Query<&mut BallHypothesis>) {
     }
 }
 
-fn setup_3d_ball_debug_logging(dbg: DebugContext) {
+fn setup_3d_ball_log(dbg: DebugContext) {
     dbg.log_static(
-        "balls/best/mesh",
-        &[rerun::Asset3D::from_file_path("./assets/rerun/ball.glb")
-            .expect("failed to load ball model")
-            .with_media_type(rerun::MediaType::glb())
-            .as_serialized_batches()],
+        "balls/hypotheses",
+        &[
+            rerun::Asset3D::from_file_path("./assets/rerun/ball_red.glb")
+                .expect("failed to load red ball model")
+                .with_media_type(rerun::MediaType::glb())
+                .as_serialized_batches(),
+            rerun::Arrows3D::update_fields()
+                .with_colors([(0, 0, 255)])
+                .with_radii(std::iter::once(rerun::components::Radius::new_ui_points(
+                    1.5,
+                )))
+                .as_serialized_batches(),
+        ],
     );
 
     dbg.log_static(
         "balls/best",
-        &[rerun::Arrows3D::update_fields()
-            .with_radii(std::iter::once(rerun::components::Radius::new_ui_points(
-                1.5,
-            )))
-            .as_serialized_batches()],
+        &[
+            rerun::Asset3D::from_file_path("./assets/rerun/ball.glb")
+                .expect("failed to load ball model")
+                .with_media_type(rerun::MediaType::glb())
+                .as_serialized_batches(),
+            rerun::Arrows3D::update_fields()
+                .with_colors([(255, 0, 0)])
+                .with_radii(std::iter::once(rerun::components::Radius::new_ui_points(
+                    1.5,
+                )))
+                .as_serialized_batches(),
+        ],
     );
 
     dbg.log_with_cycle(
@@ -509,7 +537,52 @@ fn setup_3d_ball_debug_logging(dbg: DebugContext) {
     );
 }
 
-fn log_3d_balls(
+fn log_3d_hypotheses(
+    dbg: DebugContext,
+    hypotheses: Query<&BallHypothesis, Without<BestHypothesis>>,
+    robot_pose: Res<RobotPose>,
+    cycle: Res<Cycle>,
+) {
+    let (vectors, translations, nlls): (Vec<_>, Vec<_>, Vec<_>) = hypotheses
+        .iter()
+        .map(|h| {
+            let vector = if h.is_moving() {
+                let rotation = robot_pose.inner.rotation;
+                let velocity_vector = rotation * h.filter.state().velocity;
+                (velocity_vector.x, velocity_vector.y, 0.0)
+            } else {
+                (0.0, 0.0, 0.0)
+            };
+
+            let translation = {
+                let position = h.position();
+                (position.x, position.y, 0.05)
+            };
+
+            let nll = h.nll_of_measurements.to_string();
+
+            (vector, translation, nll)
+        })
+        .multiunzip();
+
+    dbg.log_with_cycle(
+        "balls/hypotheses",
+        *cycle,
+        &[
+            // ball position
+            rerun::InstancePoses3D::new()
+                .with_translations(&translations)
+                .as_serialized_batches(),
+            // velocity
+            rerun::Arrows3D::from_vectors(vectors)
+                .with_origins(translations)
+                .with_labels(nlls)
+                .as_serialized_batches(),
+        ],
+    );
+}
+
+fn log_3d_ball(
     dbg: DebugContext,
     ball: Res<Ball>,
     cycle: Res<Cycle>,
@@ -521,12 +594,7 @@ fn log_3d_balls(
     let Ball::Some(ref ball) = *ball else {
         dbg.log(
             "balls/best",
-            &[
-                rerun::Transform3D::from_scale((0., 0., 0.)).as_serialized_batches(),
-                rerun::Arrows3D::update_fields()
-                    .with_colors([(255, 0, 0)])
-                    .as_serialized_batches(),
-            ],
+            &rerun::Transform3D::from_scale((0., 0., 0.)).as_serialized_batches(),
         );
         return;
     };
@@ -564,14 +632,22 @@ fn log_3d_balls(
         "balls/best",
         *cycle,
         &[
+            rerun::Transform3D::from_scale((1.0, 1.0, 1.0)).as_serialized_batches(),
             // ball position
-            rerun::Transform3D::from_translation((position.coords.x, position.coords.y, 0.05))
+            rerun::InstancePoses3D::new()
+                .with_translations([(position.coords.x, position.coords.y, 0.05)])
+                .with_rotation_axis_angles([PoseRotationAxisAngle::new(
+                    (axis.x, axis.y, axis.z),
+                    angle,
+                )])
                 .as_serialized_batches(),
             // velocity arrow
             rerun::Arrows3D::from_vectors([(velocity_vector.x, velocity_vector.y, 0.0)])
                 .as_serialized_batches(),
+            // standard deviations [x, y, vx, vy]
             serialized_component_batch_f32("yggdrasil.components.StdDevs", stds.iter().copied())
                 .as_serialized_batches(),
+            // cycle in which the ball was last seen
             rerun::SerializedComponentBatch::new(
                 Arc::new(arrow::array::UInt64Array::from_value(
                     ball.last_cycle.0 as u64,
@@ -581,16 +657,6 @@ fn log_3d_balls(
             )
             .as_serialized_batches(),
         ],
-    );
-    dbg.log_with_cycle(
-        "balls/best/mesh",
-        *cycle,
-        // ball rotation is performed separately so that it doesn't affect the velocity arrow
-        &rerun::Transform3D::from_rotation(Rotation3D::AxisAngle(RotationAxisAngle::new(
-            (axis.x, axis.y, axis.z),
-            angle,
-        )))
-        .as_serialized_batches(),
     );
 }
 
