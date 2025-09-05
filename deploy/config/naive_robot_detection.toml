@@ -1,0 +1,15 @@
+# Minimum number of points in a cluster to be considered a cluster
+min_cluster_count = 5
+
+# Minimum distance of a point from a line to be considered for a cluster
+min_line_distance = 0.1
+# Minimum distance of a point from a ball to be considered for a cluster
+min_ball_distance = 0.25
+
+# Maximum distance between two points to be considered a cluster
+max_cluster_distance = 0.25
+
+# Minimum radius for a cluster to be used for robot detection
+min_cluster_radius = 0.05
+# Maximum radius for a cluster to be used for robot detection
+max_cluster_radius = 0.1

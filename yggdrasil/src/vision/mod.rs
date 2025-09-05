@@ -7,6 +7,7 @@ pub mod camera;
 pub mod color;
 pub mod field_boundary;
 pub mod line_detection;
+pub mod naive_robot_detection;
 pub mod referee;
 pub mod robot_detection;
 pub mod scan_grid;
@@ -28,6 +29,7 @@ impl PluginGroup for VisionPlugins {
             .add(line_detection::LineDetectionPlugin::<Bottom>::default())
             .add(field_boundary::FieldBoundaryPlugin)
             .add(ball_detection::BallDetectionPlugin)
+            .add(naive_robot_detection::NaiveRobotDetectionPlugin)
             // .add(robot_detection::RobotDetectionPlugin)
             .add(referee::VisualRefereePlugin);
 

@@ -185,7 +185,7 @@ impl LineCandidate {
 #[derive(Component)]
 pub struct LineTaskHandle(Task<(Vec<LineCandidate>, Vec<Option<Rejection>>)>);
 
-fn detect_lines_system<T: CameraLocation>(
+pub fn detect_lines_system<T: CameraLocation>(
     mut commands: Commands,
     scan_lines: Res<ScanLines<T>>,
     camera_matrix: Res<CameraMatrix<T>>,
