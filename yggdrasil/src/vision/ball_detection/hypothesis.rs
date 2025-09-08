@@ -1,7 +1,4 @@
-use std::{
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
 use itertools::Itertools;
 use rerun::{AsComponents, components::PoseRotationAxisAngle};
@@ -13,11 +10,10 @@ use nalgebra::{
     Matrix2, Matrix2x4, Matrix4, Point2, Rotation3, UnitVector3, Vector2, Vector3, Vector4, matrix,
     vector,
 };
-use rerun::external::arrow;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    core::debug::{DebugContext, serialized_component_batch_f32},
+    core::debug::{DebugContext, SerializeComponentBatch},
     localization::{RobotPose, odometry::Odometry},
     nao::Cycle,
     vision::ball_detection::classifier::BallPerception,
@@ -493,8 +489,7 @@ fn setup_3d_ball_log(dbg: DebugContext) {
         "balls/hypotheses",
         &rerun::Asset3D::from_file_path("./assets/rerun/ball_red.glb")
             .expect("failed to load red ball model")
-            .with_media_type(rerun::MediaType::glb())
-            .as_serialized_batches(),
+            .with_media_type(rerun::MediaType::glb()),
     );
     dbg.log_static(
         "balls/hypotheses/velocity",
@@ -502,8 +497,7 @@ fn setup_3d_ball_log(dbg: DebugContext) {
             .with_colors([(0, 0, 255)])
             .with_radii(std::iter::once(rerun::components::Radius::new_ui_points(
                 1.5,
-            )))
-            .as_serialized_batches(),
+            ))),
     );
 
     dbg.log_with_cycle(
@@ -516,8 +510,7 @@ fn setup_3d_ball_log(dbg: DebugContext) {
         "balls/best",
         &rerun::Asset3D::from_file_path("./assets/rerun/ball.glb")
             .expect("failed to load ball model")
-            .with_media_type(rerun::MediaType::glb())
-            .as_serialized_batches(),
+            .with_media_type(rerun::MediaType::glb()),
     );
     dbg.log_static(
         "balls/best/velocity",
@@ -525,8 +518,7 @@ fn setup_3d_ball_log(dbg: DebugContext) {
             .with_colors([(255, 0, 0)])
             .with_radii(std::iter::once(rerun::components::Radius::new_ui_points(
                 1.5,
-            )))
-            .as_serialized_batches(),
+            ))),
     );
 
     dbg.log_with_cycle(
@@ -586,9 +578,7 @@ fn log_3d_hypotheses(
         "balls/hypotheses/velocity",
         *cycle,
         // velocity
-        &rerun::Arrows3D::from_vectors(vectors)
-            .with_origins(translations)
-            .as_serialized_batches(),
+        &rerun::Arrows3D::from_vectors(vectors).with_origins(translations),
     );
 }
 
@@ -602,10 +592,7 @@ fn log_3d_ball(
     mut current_rotation: Local<Rotation3<f32>>,
 ) {
     let Ball::Some(ref ball) = *ball else {
-        dbg.log(
-            "balls/best",
-            &rerun::Transform3D::from_scale((0., 0., 0.)).as_serialized_batches(),
-        );
+        dbg.log("balls/best", &rerun::Transform3D::from_scale((0., 0., 0.)));
         return;
     };
 
@@ -654,26 +641,25 @@ fn log_3d_ball(
                     angle,
                 )])
                 .as_serialized_batches(),
-            // standard deviations [x, y, vx, vy]
-            serialized_component_batch_f32("yggdrasil.components.StdDevs", stds.iter().copied())
-                .as_serialized_batches(),
-            // cycle in which the ball was last seen
-            rerun::SerializedComponentBatch::new(
-                Arc::new(arrow::array::UInt64Array::from_value(
-                    ball.last_cycle.0 as u64,
-                    1,
-                )),
-                rerun::ComponentDescriptor::new("yggdrasil.components.BallDetectionCycle"),
-            )
-            .as_serialized_batches(),
+            vec![
+                // standard deviations [x, y, vx, vy]
+                f32::serialize_component_batch(
+                    "yggdrasil.components.StdDevs",
+                    stds.iter().copied(),
+                ),
+                // cycle in which the ball was last seen
+                u64::serialize_component_batch(
+                    "yggdrasil.components.BallDetectionCycle",
+                    std::iter::once(ball.last_cycle.0 as u64),
+                ),
+            ],
         ],
     );
     dbg.log_with_cycle(
         "balls/best/velocity",
         *cycle,
         // velocity arrow
-        &rerun::Arrows3D::from_vectors([(velocity_vector.x, velocity_vector.y, 0.0)])
-            .as_serialized_batches(),
+        &rerun::Arrows3D::from_vectors([(velocity_vector.x, velocity_vector.y, 0.0)]),
     );
 }
 

@@ -19,7 +19,7 @@ use yggdrasil_rerun_comms::debug_system::DebugEnabledSystems;
 
 use crate::nao::{Cycle, CycleTime};
 
-pub use utils::serialized_component_batch_f32;
+pub use utils::SerializeComponentBatch;
 
 const DEFAULT_STORAGE_PATH: &str = "/mnt/usb";
 const STORAGE_PATH_ENV_NAME: &str = "RERUN_STORAGE_PATH";
