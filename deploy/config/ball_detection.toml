@@ -101,7 +101,7 @@ max_merge_speed_difference = 0.1
 max_merge_angle_difference = 0.2
 
 # Uncertainty in meters for despawning a ball hypothesis
-despawn_uncertainty = 1.0
+despawn_uncertainty = 10.0
 
 # Process noise for moving ball model
 moving_process_noise = [0.005, 0.005, 0.05, 0.05]
