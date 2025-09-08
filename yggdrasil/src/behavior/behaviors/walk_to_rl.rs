@@ -5,6 +5,7 @@ use ml::{MlModel, MlModelResourceExt, prelude::ModelExecutor};
 
 type ModelInput = Vec<f32>;
 type ModelOutput = Vec<f32>;
+use nalgebra::Point2;
 use nidhogg::types::{FillExt, HeadJoints};
 use tasks::conditions::task_finished;
 
@@ -66,7 +67,7 @@ impl MlModel for WalkToRLModel {
     type Inputs = ModelInput;
     type Outputs = ModelOutput;
 
-    const ONNX_PATH: &'static str = "models/walktopoint.onnx";
+    const ONNX_PATH: &'static str = "models/walktopoint_sidestep.onnx";
 }
 
 #[derive(Resource, Deref)]
@@ -81,6 +82,7 @@ struct Input<'d> {
     field_width: f32,
     field_height: f32,
     border_strip_width: f32,
+    target: Point2<f32>,
 }
 
 impl RlBehaviorInput<ModelInput> for Input<'_> {
@@ -88,18 +90,18 @@ impl RlBehaviorInput<ModelInput> for Input<'_> {
         let robot_position = self.robot_pose.inner.translation.vector.xy();
         let robot_angle = self.robot_pose.inner.rotation.angle();
 
-        let relative_x = 0.0 - robot_position.x;
-        let relative_y = 0.0 - robot_position.y;
+        let relative_x = self.target.x - robot_position.x;
+        let relative_y = self.target.y - robot_position.y;
 
         let normalized_position_x = relative_x / (self.field_width + self.border_strip_width * 2.0);
         let normalized_position_y =
             relative_y / (self.field_height + self.border_strip_width * 2.0);
 
         // print the normalized position
-        println!(
-            "Normalized Position: ({}, {})",
-            normalized_position_x, normalized_position_y
-        );
+        // println!(
+        //     "Normalized Position: ({}, {})",
+        //     normalized_position_x, normalized_position_y
+        // );
 
         // compute the arctan2 of the robot's normalized position
         // to get the angle in radians
@@ -155,12 +157,14 @@ fn run_inference(
     mut model_executor: ResMut<ModelExecutor<WalkToRLModel>>,
     robot_pose: Res<RobotPose>,
     layout_config: Res<LayoutConfig>,
+    walk_to_rl: Res<WalkToRL>,
 ) {
     let input = Input {
         robot_pose: &robot_pose,
         field_width: layout_config.field.width,
         field_height: layout_config.field.length,
         border_strip_width: layout_config.field.border_strip_width,
+        target: walk_to_rl.target.position,
     };
 
     spawn_rl_behavior::<_, _, Output>(&mut commands, &mut *model_executor, input);
@@ -173,6 +177,7 @@ fn walk_to_rl(
     behavior_config: Res<BehaviorConfig>,
     observe_starting_time: Res<ObserveStartingTime>,
     mut nao_manager: ResMut<NaoManager>,
+    robot_pose: Res<RobotPose>,
 ) {
     // let target_point = Point3::new(walk_to.target.position.x, walk_to.target.position.y, 0.0);
 
@@ -184,11 +189,24 @@ fn walk_to_rl(
     //     NaoManager::HEAD_STIFFNESS,
     // );
 
-    println!("Step from model: {:?}", output.step);
+    // println!("Step from model: {:?}", output.step);
+
+    // check if the target position is reached
+    // let distance_to_target =
+    //     walk_to.target.position.coords - robot_pose.world_position().xy().coords;
+
+    // compute the distance to the target by using the norm
+    let difference = walk_to.target.position.coords - robot_pose.world_position().xy().coords;
+    let distance_to_target = difference.norm();
+
+    if distance_to_target < 0.1 {
+        println!("Target position reached, stopping.");
+        step_context.request_stand();
+        return;
+    }
 
     step_context
         .request_walk(output.step * behavior_config.rl_striker_search.policy_output_scaling);
-
 
     let observe_config = &behavior_config.rl_striker_search;
     look_around(
