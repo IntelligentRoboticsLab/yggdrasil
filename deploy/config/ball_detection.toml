@@ -89,19 +89,19 @@ linear_velocity_decay = 0.1
 exponential_velocity_decay = 0.15
 
 # Maximum mahalanobis distance to associate a measurement to a hypothesis
-max_mahalonobis_association_distance = 2.0
+max_mahalonobis_association_distance = 3.0
 
 # Maximum euclidean distance to associate a measurement to a hypothesis
 max_euclidean_association_distance = 2.0
 
 # Maximum speed difference for merging moving ball hypotheses in m/s
-max_merge_speed_difference = 0.5
+max_merge_speed_difference = 0.1
 
 # Maximum angle difference for merging moving ball hypotheses in radians
-max_merge_angle_difference = 0.25
+max_merge_angle_difference = 0.2
 
 # Uncertainty in meters for despawning a ball hypothesis
-despawn_uncertainty = 0.1
+despawn_uncertainty = 1.0
 
 # Process noise for moving ball model
 moving_process_noise = [0.005, 0.005, 0.05, 0.05]

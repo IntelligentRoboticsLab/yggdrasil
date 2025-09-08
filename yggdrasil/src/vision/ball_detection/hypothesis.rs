@@ -3,7 +3,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use itertools::MultiUnzip;
+use itertools::Itertools;
 use rerun::{AsComponents, components::PoseRotationAxisAngle};
 
 use bevy::prelude::*;
@@ -186,6 +186,7 @@ pub struct BallHypothesis {
     pub spawned_at: Instant,
     pub last_update: Instant,
     pub last_cycle: Cycle,
+    pub is_best: bool,
 }
 
 impl BallHypothesis {
@@ -218,7 +219,7 @@ impl BallHypothesis {
         if (!is_reliable && self.last_update.elapsed() > UNRELIABLE_DEMOTION_DURATION)
             || (is_reliable && self.filter.state().velocity.norm() < config.min_moving_speed)
         {
-            let pos = self.filter.state().position;
+            let pos = self.position();
             // set velocity to zero
             self.filter.state = Vector4::new(pos.x, pos.y, 0.0, 0.0);
         }
@@ -234,7 +235,7 @@ impl BallHypothesis {
         if self
             .filter
             .update(
-                other.filter.state().position.coords,
+                other.position().coords,
                 Matrix2x4::identity(),
                 other
                     .filter
@@ -301,7 +302,7 @@ fn measurement_update(
                 );
 
                 // update nll
-                let position = hypothesis.filter.state().position;
+                let position = hypothesis.position();
                 let cov_2d = hypothesis
                     .filter
                     .covariance()
@@ -346,6 +347,7 @@ fn measurement_update(
                 spawned_at: Instant::now(),
                 last_update: Instant::now(),
                 last_cycle: measurement.cycle,
+                is_best: false,
             });
         }
 
@@ -385,12 +387,8 @@ fn merge_balls(
         }
 
         // only merge if they are close enough (considering uncertainty)
-        if mahalanobis_distance(
-            a.position().coords,
-            b.position().coords,
-            a.filter.covariance().fixed_view::<2, 2>(0, 0).into_owned(),
-        )
-        .is_ok_and(|d| d < config.max_mahalonobis_association_distance)
+        if nalgebra::distance(&a.position(), &b.position())
+            < config.max_euclidean_association_distance
         {
             // Merge the two hypotheses
             a.merge(&b);
@@ -429,26 +427,19 @@ impl Ball {
     }
 }
 
-#[derive(Component)]
-struct BestHypothesis;
-
-fn update_best_ball(
-    mut commands: Commands,
-    hypotheses: Query<(Entity, &BallHypothesis)>,
-    mut ball: ResMut<Ball>,
-) {
-    let Some((entity, best_ball)) = hypotheses
-        .iter()
-        .inspect(|(e, _)| {
-            commands.entity(*e).remove::<BestHypothesis>();
+fn update_best_ball(mut hypotheses: Query<&mut BallHypothesis>, mut ball: ResMut<Ball>) {
+    let Some(mut best_ball) = hypotheses
+        .iter_mut()
+        .update(|ball| {
+            ball.is_best = false;
         })
-        .min_by(|(_, a), (_, b)| a.nll_of_measurements.total_cmp(&b.nll_of_measurements))
+        .min_by(|a, b| a.nll_of_measurements.total_cmp(&b.nll_of_measurements))
     else {
         *ball = Ball::None;
         return;
     };
 
-    commands.entity(entity).insert(BestHypothesis);
+    best_ball.is_best = true;
     *ball = Ball::Some(BallState {
         last_cycle: best_ball.last_cycle,
         last_update: best_ball.last_update,
@@ -500,34 +491,42 @@ fn normalize_measurement_nll(mut hypotheses: Query<&mut BallHypothesis>) {
 fn setup_3d_ball_log(dbg: DebugContext) {
     dbg.log_static(
         "balls/hypotheses",
-        &[
-            rerun::Asset3D::from_file_path("./assets/rerun/ball_red.glb")
-                .expect("failed to load red ball model")
-                .with_media_type(rerun::MediaType::glb())
-                .as_serialized_batches(),
-            rerun::Arrows3D::update_fields()
-                .with_colors([(0, 0, 255)])
-                .with_radii(std::iter::once(rerun::components::Radius::new_ui_points(
-                    1.5,
-                )))
-                .as_serialized_batches(),
-        ],
+        &rerun::Asset3D::from_file_path("./assets/rerun/ball_red.glb")
+            .expect("failed to load red ball model")
+            .with_media_type(rerun::MediaType::glb())
+            .as_serialized_batches(),
+    );
+    dbg.log_static(
+        "balls/hypotheses/velocity",
+        &rerun::Arrows3D::update_fields()
+            .with_colors([(0, 0, 255)])
+            .with_radii(std::iter::once(rerun::components::Radius::new_ui_points(
+                1.5,
+            )))
+            .as_serialized_batches(),
+    );
+
+    dbg.log_with_cycle(
+        "balls/hypotheses",
+        Cycle::default(),
+        &rerun::Transform3D::from_scale((0., 0., 0.)),
     );
 
     dbg.log_static(
         "balls/best",
-        &[
-            rerun::Asset3D::from_file_path("./assets/rerun/ball.glb")
-                .expect("failed to load ball model")
-                .with_media_type(rerun::MediaType::glb())
-                .as_serialized_batches(),
-            rerun::Arrows3D::update_fields()
-                .with_colors([(255, 0, 0)])
-                .with_radii(std::iter::once(rerun::components::Radius::new_ui_points(
-                    1.5,
-                )))
-                .as_serialized_batches(),
-        ],
+        &rerun::Asset3D::from_file_path("./assets/rerun/ball.glb")
+            .expect("failed to load ball model")
+            .with_media_type(rerun::MediaType::glb())
+            .as_serialized_batches(),
+    );
+    dbg.log_static(
+        "balls/best/velocity",
+        &rerun::Arrows3D::update_fields()
+            .with_colors([(255, 0, 0)])
+            .with_radii(std::iter::once(rerun::components::Radius::new_ui_points(
+                1.5,
+            )))
+            .as_serialized_batches(),
     );
 
     dbg.log_with_cycle(
@@ -539,12 +538,13 @@ fn setup_3d_ball_log(dbg: DebugContext) {
 
 fn log_3d_hypotheses(
     dbg: DebugContext,
-    hypotheses: Query<&BallHypothesis, Without<BestHypothesis>>,
+    hypotheses: Query<&BallHypothesis>,
     robot_pose: Res<RobotPose>,
     cycle: Res<Cycle>,
 ) {
-    let (vectors, translations, nlls): (Vec<_>, Vec<_>, Vec<_>) = hypotheses
+    let (vectors, translations): (Vec<_>, Vec<_>) = hypotheses
         .iter()
+        .filter(|h| !h.is_best)
         .map(|h| {
             let vector = if h.is_moving() {
                 let rotation = robot_pose.inner.rotation;
@@ -555,30 +555,40 @@ fn log_3d_hypotheses(
             };
 
             let translation = {
-                let position = h.position();
+                let position = robot_pose.robot_to_world(&h.position());
+
                 (position.x, position.y, 0.05)
             };
 
-            let nll = h.nll_of_measurements.to_string();
-
-            (vector, translation, nll)
+            (vector, translation)
         })
-        .multiunzip();
+        .unzip();
+
+    let scale = if vectors.is_empty() {
+        (0., 0., 0.)
+    } else {
+        (1., 1., 1.)
+    };
 
     dbg.log_with_cycle(
         "balls/hypotheses",
         *cycle,
         &[
+            // scale
+            rerun::Transform3D::from_scale(scale).as_serialized_batches(),
             // ball position
             rerun::InstancePoses3D::new()
                 .with_translations(&translations)
                 .as_serialized_batches(),
-            // velocity
-            rerun::Arrows3D::from_vectors(vectors)
-                .with_origins(translations)
-                .with_labels(nlls)
-                .as_serialized_batches(),
         ],
+    );
+    dbg.log_with_cycle(
+        "balls/hypotheses/velocity",
+        *cycle,
+        // velocity
+        &rerun::Arrows3D::from_vectors(vectors)
+            .with_origins(translations)
+            .as_serialized_batches(),
     );
 }
 
@@ -632,17 +642,17 @@ fn log_3d_ball(
         "balls/best",
         *cycle,
         &[
-            rerun::Transform3D::from_scale((1.0, 1.0, 1.0)).as_serialized_batches(),
+            rerun::Transform3D::from_translation_scale(
+                (position.coords.x, position.coords.y, 0.05),
+                (1.0, 1.0, 1.0),
+            )
+            .as_serialized_batches(),
             // ball position
             rerun::InstancePoses3D::new()
-                .with_translations([(position.coords.x, position.coords.y, 0.05)])
                 .with_rotation_axis_angles([PoseRotationAxisAngle::new(
                     (axis.x, axis.y, axis.z),
                     angle,
                 )])
-                .as_serialized_batches(),
-            // velocity arrow
-            rerun::Arrows3D::from_vectors([(velocity_vector.x, velocity_vector.y, 0.0)])
                 .as_serialized_batches(),
             // standard deviations [x, y, vx, vy]
             serialized_component_batch_f32("yggdrasil.components.StdDevs", stds.iter().copied())
@@ -657,6 +667,13 @@ fn log_3d_ball(
             )
             .as_serialized_batches(),
         ],
+    );
+    dbg.log_with_cycle(
+        "balls/best/velocity",
+        *cycle,
+        // velocity arrow
+        &rerun::Arrows3D::from_vectors([(velocity_vector.x, velocity_vector.y, 0.0)])
+            .as_serialized_batches(),
     );
 }
 
