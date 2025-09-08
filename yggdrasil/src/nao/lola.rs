@@ -3,7 +3,7 @@ use std::time::Duration;
 use bevy::{ecs::system::RunSystemOnce, prelude::*};
 use nidhogg::{NaoBackend, NaoControlMessage, NaoState, backend::LolaBackend};
 
-use crate::core::debug::serialized_component_batch_f32;
+use crate::core::debug::SerializeComponentBatch;
 use crate::{core::debug, prelude::*};
 use crate::{core::debug::DebugContext, nao::RobotInfo};
 
@@ -95,21 +95,21 @@ pub fn sync_hardware(
 }
 
 fn log_nao_state(ctx: DebugContext, cycle: Res<Cycle>, nao_state: Res<NaoState>) {
-    let joint_positions = serialized_component_batch_f32(
+    let joint_positions = f32::serialize_component_batch(
         "yggdrasil.components.JointPosition",
         nao_state.position.clone(),
     );
-    let joint_stiffness = serialized_component_batch_f32(
+    let joint_stiffness = f32::serialize_component_batch(
         "yggdrasil.components.JointStiffness",
         nao_state.stiffness.clone(),
     );
 
-    let currents = serialized_component_batch_f32(
+    let currents = f32::serialize_component_batch(
         "yggdrasil.components.JointCurrent",
         nao_state.current.clone(),
     );
 
-    let temperature = serialized_component_batch_f32(
+    let temperature = f32::serialize_component_batch(
         "yggdrasil.components.JointTemperature",
         nao_state.temperature.clone(),
     );
@@ -126,11 +126,11 @@ fn log_nao_control_message(
     cycle: Res<Cycle>,
     control_msg: Res<NaoControlMessage>,
 ) {
-    let joint_positions = serialized_component_batch_f32(
+    let joint_positions = f32::serialize_component_batch(
         "yggdrasil.components.JointPosition",
         control_msg.position.clone(),
     );
-    let joint_stiffness = serialized_component_batch_f32(
+    let joint_stiffness = f32::serialize_component_batch(
         "yggdrasil.components.JointStiffness",
         control_msg.stiffness.clone(),
     );

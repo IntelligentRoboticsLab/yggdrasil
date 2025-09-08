@@ -9,7 +9,7 @@ use crate::{
         walking_engine::step_context::StepContext,
     },
     nao::{HeadMotionManager, LookAt},
-    vision::ball_detection::ball_tracker::BallTracker,
+    vision::ball_detection::hypothesis::Ball,
 };
 
 pub struct WalkToBallBehaviorPlugin;
@@ -32,11 +32,11 @@ fn walk_to_ball(
     mut step_planner: ResMut<StepPlanner>,
     mut step_context: ResMut<StepContext>,
     mut head_motion_manager: ResMut<HeadMotionManager>,
-    ball_tracker: Res<BallTracker>,
+    ball: Res<Ball>,
 ) {
-    let Some(ball) = ball_tracker
-        .stationary_ball()
-        .map(|ball| pose.robot_to_world(&ball))
+    let Some(ball) = ball
+        .as_option()
+        .map(|ball| pose.robot_to_world(&ball.position))
     else {
         return;
     };

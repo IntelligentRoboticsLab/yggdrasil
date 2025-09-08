@@ -23,6 +23,7 @@ yggdrasil_rerun = []
 [dependencies]
 # our own crates here
 bifrost = { workspace = true }
+filter = { workspace = true }
 heimdall = { workspace = true }
 ml = { workspace = true }
 nidhogg = { workspace = true, features = ["lola", "bevy"] }
@@ -41,7 +42,6 @@ bevy = { workspace = true, features = [
 chrono = { workspace = true }
 cpal = { workspace = true }
 fast_image_resize = { workspace = true }
-filter = { version = "0.1.0", path = "../crates/filter" }
 futures = { workspace = true }
 geo = { workspace = true }
 itertools = { workspace = true }

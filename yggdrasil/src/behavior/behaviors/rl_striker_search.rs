@@ -18,7 +18,7 @@ use crate::{
     },
     core::{
         config::layout::LayoutConfig,
-        debug::{DebugContext, serialized_component_batch_f32},
+        debug::{DebugContext, SerializeComponentBatch},
     },
     localization::RobotPose,
     motion::walking_engine::{FootSwitchedEvent, Gait, step::Step, step_context::StepContext},
@@ -161,10 +161,7 @@ fn run_inference(
     dbg.log_with_cycle(
         "behavior/striker_search/observation",
         *cycle,
-        &[serialized_component_batch_f32(
-            "yggdrasil.components.RlSearchObs",
-            input.to_input(),
-        )],
+        &f32::serialize_component_batch("yggdrasil.components.RlSearchObs", input.to_input()),
     );
 
     spawn_rl_behavior::<_, _, Output>(&mut commands, &mut *model_executor, input);
