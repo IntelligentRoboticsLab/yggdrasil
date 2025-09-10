@@ -38,8 +38,10 @@ pub struct BallProposalConfig {
     pub bounding_box_scale: f32,
     /// The minimum overlap ratio between for bounding boxes to be merged using non-maximum suppression
     pub nms_threshold: f32,
-    /// The minimum radius of the proposed ball in pixels.
+    /// The minimum radius of the proposed ball in meters.
     pub min_ball_radius: f32,
+    /// The maximum radius of the proposed ball in meters.
+    pub max_ball_radius: f32,
     /// The maximum area of the intersection between a detected robot and a proposed ball in pixels.
     pub max_robot_intersection: f32,
     // Maximum allowed error factor on the computed ball radius.
@@ -333,22 +335,32 @@ pub fn get_ball_proposals<T: CameraLocation>(
             continue;
         }
 
-        // distance to the ball
-        let Ok(distance) = matrix
-            .pixel_to_ground(mid_point, 0.0)
-            .map(|p| p.coords.magnitude())
+        let Ok(left) =
+            matrix.pixel_to_ground(point![middle.start_point() as f32, mid_point.y], 0.0)
         else {
             continue;
         };
 
-        // find radius to look around the point,
-        //  bbox scale is diameter, so divide by 2 to get radius
-        let scaling = config.bounding_box_scale * 0.5;
-        let radius = scaling / distance;
+        let Ok(right) = matrix.pixel_to_ground(point![middle.end_point() as f32, mid_point.y], 0.0)
+        else {
+            continue;
+        };
 
-        if radius < config.min_ball_radius {
+        // magnitude of the midpoint of left and right point
+        let distance = (0.5 * (left.coords + right.coords)).magnitude();
+
+        // diameter of the ball in meters
+        let ball_diameter = (right - left).norm();
+        let ball_radius = 0.5 * ball_diameter;
+
+        if ball_radius < config.min_ball_radius || ball_radius > config.max_ball_radius {
             continue;
         }
+
+        // find radius to look around the point,
+        // bbox scale is diameter, so divide by 2 to get radius
+        let scaling = config.bounding_box_scale * 0.5;
+        let image_radius = scaling / distance;
 
         let image_size = (
             scan_lines.image().width() as f32,
@@ -356,35 +368,40 @@ pub fn get_ball_proposals<T: CameraLocation>(
         );
 
         // if the white line is long, divvy up white segment in multiple potential ball centers
-        if middle.length() > (radius * 2.0 * config.ball_radius_max_error) as usize {
+        if middle.length() > (image_radius * 2.0 * config.ball_radius_max_error) as usize {
             // check point on left and right side of the white scanline
             let center = point![
-                middle.start_point() as f32 + radius,
+                middle.start_point() as f32 + image_radius,
                 middle.fixed_point() as f32
             ];
             if let Some((proposal, detection)) =
-                check_proposal(center, radius, distance, h_lines, config, image_size)
+                check_proposal(center, image_radius, distance, h_lines, config, image_size)
             {
                 proposals.push(proposal);
                 detections.push(detection);
             }
 
             let center = point![
-                middle.end_point() as f32 - radius,
+                middle.end_point() as f32 - image_radius,
                 middle.fixed_point() as f32
             ];
 
             if let Some((proposal, detection)) =
-                check_proposal(center, radius, distance, h_lines, config, image_size)
+                check_proposal(center, image_radius, distance, h_lines, config, image_size)
             {
                 proposals.push(proposal);
                 detections.push(detection);
             }
         }
         // otherwise only investigate center
-        else if let Some((proposal, detection)) =
-            check_proposal(mid_point, radius, distance, h_lines, config, image_size)
-        {
+        else if let Some((proposal, detection)) = check_proposal(
+            mid_point,
+            image_radius,
+            distance,
+            h_lines,
+            config,
+            image_size,
+        ) {
             proposals.push(proposal);
             detections.push(detection);
         }

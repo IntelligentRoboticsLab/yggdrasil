@@ -14,8 +14,11 @@ bounding_box_scale = 80.0
 # The minimum overlap ratio between for bounding boxes to be merged using non-maximum suppression
 nms_threshold = 0.3
 
-# The minimum radius of the ball in pixels.
-min_ball_radius = 10.0
+# The minimum radius of the ball in meters.
+min_ball_radius = 0.05
+
+# The maximum radius of the ball in meters.
+max_ball_radius = 0.1
 
 # The maximum area of intersection between a detected robot and a ball in pixels.
 # If the area of intersection is larger than this value, the proposal is discarded.
@@ -46,8 +49,11 @@ bounding_box_scale = 30.0
 # The minimum overlap ratio between for bounding boxes to be merged using non-maximum suppression
 nms_threshold = 0.3
 
-# The minimum radius of the ball in pixels.
-min_ball_radius = 12.0
+# The minimum radius of the ball in meters.
+min_ball_radius = 0.05
+
+# The maximum radius of the ball in meters.
+max_ball_radius = 0.1
 
 # The maximum area of intersection between a detected robot and a ball in pixels.
 # If the area of intersection is larger than this value, the proposal is discarded.
