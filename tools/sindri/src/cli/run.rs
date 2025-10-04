@@ -35,12 +35,14 @@ pub struct Run {
 impl Run {
     /// Compiles, upload and then runs yggdrasil on one robot.
     /// This is done interactively so logs can be seen in the terminal.
-    pub async fn run(self, config: SindriConfig) -> Result<()> {
+    pub async fn run(self, mut config: SindriConfig) -> Result<()> {
         if self.robot_ops.robots.len() != 1 {
             bail!("Exactly one robot should be specified for the run command")
         }
 
-        // Generate showtime config
+        if let Some(team_number) = self.robot_ops.team {
+            config.team_number = team_number;
+        }
         self.robot_ops.prepare_showtime_config(&config)?;
 
         let local = self.robot_ops.local;
