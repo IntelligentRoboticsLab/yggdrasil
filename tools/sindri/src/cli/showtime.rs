@@ -24,8 +24,12 @@ impl Showtime {
     /// This command compiles yggdrasil, stops the yggdrasil service on each robot
     /// uploads binaries and other assets and the restarts the yggdrasil service
     /// on each robot.
-    pub async fn showtime(self, config: SindriConfig) -> Result<()> {
+    pub async fn showtime(self, mut config: SindriConfig) -> Result<()> {
         self.robot_ops.prepare_showtime_config(&config)?;
+
+        if let Some(team_number) = self.robot_ops.team {
+            config.team_number = team_number;
+        }
 
         let compile_bar = ProgressBar::new(1);
         let output = robot_ops::Output::Single(compile_bar.clone());
