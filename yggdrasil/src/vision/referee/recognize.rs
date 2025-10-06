@@ -56,7 +56,7 @@ pub fn recognizing_pose(
                 // Send final pose recognition
                 recognized_pose.write(RefereePoseRecognized { pose: *pose });
             }
-            // Deactivate the visual referee recogition state
+            // Deactivate the visual referee recognition state
             next_recognition_status.set(VisualRefereeRecognitionStatus::Inactive);
             // Empty the memory of previous detected states
             detected_poses.clear();
@@ -95,7 +95,7 @@ impl DetectedRefereePoses {
     }
 }
 
-/// A bevy state ([`States`]), which keeps track of whether the referee pose reconition
+/// A bevy state ([`States`]), which keeps track of whether the referee pose recognition
 /// is ongoing or not.
 #[derive(States, Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum VisualRefereeRecognitionStatus {

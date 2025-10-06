@@ -33,7 +33,7 @@ pub struct SensorConfig {
     /// Configuration for the FSR sensor.
     pub fsr: fsr::FsrConfig,
 
-    /// Configuration for the button sensitivies.
+    /// Configuration for the button sensitivities.
     pub button: button::ButtonConfig,
 
     /// Configuration for the foot bumpers.

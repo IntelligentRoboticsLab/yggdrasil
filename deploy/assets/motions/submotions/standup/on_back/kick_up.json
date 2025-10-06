@@ -1,5 +1,5 @@
 {
-    "joint_stifness": 0.8,
+    "joint_stiffness": 0.8,
     "chest_angle_bound_upper": -0.4,
     "chest_angle_bound_lower": 0.4,
     "fail_routine": "Retry",
