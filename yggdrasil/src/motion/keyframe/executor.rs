@@ -59,7 +59,7 @@ pub fn keyframe_executor(
         })
         .expect("failed to clone active motion");
 
-    let submotion_stiffness: f32 = motion.submotions[&sub_motion_name].joint_stifness;
+    let submotion_stiffness: f32 = motion.submotions[&sub_motion_name].joint_stiffness;
 
     // at the start of a new submotion, we need to lerp to the starting position
     if keyframe_executor

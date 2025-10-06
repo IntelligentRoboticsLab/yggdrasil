@@ -114,7 +114,7 @@ pub struct MotionSettings {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SubMotion {
     /// Joint stiffness of the submotion.
-    pub joint_stifness: f32,
+    pub joint_stiffness: f32,
     /// TODO, upper limit for angle variable.
     pub chest_angle_bound_upper: f32,
     /// TODO, lower limit for angle variable.
