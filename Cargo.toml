@@ -64,7 +64,7 @@ yggdrasil_rerun_comms = { path = "tools/yggdrasil_rerun/yggdrasil_rerun_comms" }
 # external crates
 apodize = "1.0.0"
 async-std = "1.13.1"
-bevy = { version = "0.16.0", default-features = false, features = [
+bevy = { version = "0.16.1", default-features = false, features = [
   "bevy_state",
 ] }
 byteorder = "1.5.0"
@@ -97,7 +97,7 @@ num = "0.4.3"
 openvino = { git = "https://github.com/intel/openvino-rs", rev = "2f6b500", features = [
   "runtime-linking",
 ] }
-ordered-float = "5.0.0"
+ordered-float = "5.1.0"
 pathfinding = "4.11.0"
 petgraph = "0.8.1"
 plotters = { version = "0.3.7", default-features = false, features = [
@@ -120,7 +120,7 @@ rmp-serde = "1.1.1"
 rustfft = "6.4.0"
 serde = "1.0.219"
 serde_json = "1.0.140"
-serde_with = "3.14.0"
+serde_with = "3.15.0"
 socket2 = "0.6.0"
 strum = { version = "0.27", features = ["derive"] }
 syn = "2.0.100"
