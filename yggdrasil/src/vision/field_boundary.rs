@@ -196,8 +196,6 @@ pub fn detect_field_boundary(
         .resize(MODEL_INPUT_WIDTH, MODEL_INPUT_HEIGHT)
         .expect("Failed to resize image")
         .into_iter()
-        // TODO: Retrain the model in u8 inputs
-        .map(f32::from)
         .collect::<Vec<_>>();
 
     commands
@@ -225,7 +223,7 @@ pub fn detect_field_boundary(
 pub struct FieldBoundaryModel;
 
 impl MlModel for FieldBoundaryModel {
-    type Inputs = Vec<f32>;
+    type Inputs = Vec<u8>;
     type Outputs = Vec<f32>;
 
     const ONNX_PATH: &'static str = "models/field_boundary.onnx";
