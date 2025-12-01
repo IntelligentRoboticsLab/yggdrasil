@@ -1,3 +1,4 @@
+mod covert;
 mod team;
 
 pub use team::{TeamCommunication, TeamMessage};
@@ -9,6 +10,8 @@ pub struct CommunicationPlugins;
 
 impl PluginGroup for CommunicationPlugins {
     fn build(self) -> PluginGroupBuilder {
-        PluginGroupBuilder::start::<Self>().add(team::TeamCommunicationPlugin)
+        PluginGroupBuilder::start::<Self>()
+            .add(team::TeamCommunicationPlugin)
+            .add(covert::InterferencePlugin)
     }
 }
