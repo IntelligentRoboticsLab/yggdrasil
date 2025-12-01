@@ -22,7 +22,7 @@ use crate::{
     vision::ball_detection::hypothesis::{Ball, BallState},
 };
 
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 const WALK_WITH_BALL_ANGLE: f32 = 0.3;
 const ALIGN_WITH_BALL_DISTANCE: f32 = 0.3;
@@ -47,13 +47,36 @@ fn in_set_play(
     gamecontroller_message: Option<Res<GameControllerMessage>>,
     primary_state: Res<PrimaryState>,
     player_config: Res<PlayerConfig>,
+    mut whistle_time: Local<Option<Instant>>,
 ) -> bool {
     if let Some(message) = gamecontroller_message {
         return match *primary_state {
             // return true if there is a set play OR we are in Playing state with a secondary time (Kick-Off)
-            PrimaryState::Playing { .. } => {
+            PrimaryState::Playing {
+                whistle_in_set: false,
+            } => {
+                *whistle_time = None;
+
                 (message.set_play != SetPlay::None || message.secondary_time != 0)
                     && message.kicking_team != player_config.team_number
+            }
+            PrimaryState::Playing {
+                whistle_in_set: true,
+            } => {
+                if message.kicking_team == player_config.team_number {
+                    false
+                } else if let Some(instant) = *whistle_time {
+                    if instant.elapsed() > Duration::from_secs(10) {
+                        false
+                    } else {
+                        // Await timer
+                        true
+                    }
+                } else {
+                    *whistle_time = Some(Instant::now());
+                    // Await timer
+                    return true;
+                }
             }
             _ => false,
         };
