@@ -72,8 +72,8 @@ pub fn calculate_discriminants<'a>(
         let discriminant = if let Some((_, lit)) = &variant.discriminant {
             quote! { #lit }
         } else {
-            let discriminant_counter_cpy = discriminant_counter.clone();
-            quote! { #discriminant_counter_cpy }
+            let discriminant_counter_copy = discriminant_counter.clone();
+            quote! { #discriminant_counter_copy }
         };
 
         discriminant_counter = quote! { #discriminant + 1 };
